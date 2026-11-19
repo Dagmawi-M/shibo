@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "open",
+      "type": "led",
+      "x": 330,
+      "y": -150,
+      "attrs": {
+        "color": "green"
+      }
+    },
+    {
+      "id": "r_open",
+      "type": "resistor",
+      "x": 320,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "locked",
+      "type": "led",
+      "x": 380,
+      "y": -150,
+      "attrs": {
+        "color": "red"
+      }
+    },
+    {
+      "id": "r_locked",
+      "type": "resistor",
+      "x": 370,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "keypad",
+      "type": "membrane-keypad",
+      "x": -320,
+      "y": -120
+    }
+  ],
+  "wires": [
+    {
+      "from": "uno:10",
+      "to": "r_open:2",
+      "color": "green"
+    },
+    {
+      "from": "r_open:1",
+      "to": "open:A",
+      "color": "green"
+    },
+    {
+      "from": "open:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "uno:11",
+      "to": "r_locked:2",
+      "color": "green"
+    },
+    {
+      "from": "r_locked:1",
+      "to": "locked:A",
+      "color": "green"
+    },
+    {
+      "from": "locked:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "keypad:R1",
+      "to": "uno:9",
+      "color": "blue"
+    },
+    {
+      "from": "keypad:R2",
+      "to": "uno:8",
+      "color": "blue"
+    },
+    {
+      "from": "keypad:R3",
+      "to": "uno:7",
+      "color": "blue"
+    },
+    {
+      "from": "keypad:R4",
+      "to": "uno:6",
+      "color": "blue"
+    },
+    {
+      "from": "keypad:C1",
+      "to": "uno:5",
+      "color": "purple"
+    },
+    {
+      "from": "keypad:C2",
+      "to": "uno:4",
+      "color": "purple"
+    },
+    {
+      "from": "keypad:C3",
+      "to": "uno:3",
+      "color": "purple"
+    },
+    {
+      "from": "keypad:C4",
+      "to": "uno:2",
+      "color": "purple"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}

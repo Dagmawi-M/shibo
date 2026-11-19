@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "display",
+      "type": "7segment",
+      "x": 150,
+      "y": -190,
+      "attrs": {
+        "common": "cathode",
+        "digits": "1",
+        "color": "red"
+      }
+    },
+    {
+      "id": "rcom",
+      "type": "resistor",
+      "x": 60,
+      "y": -100,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "id": "roll",
+      "type": "pushbutton",
+      "x": 300,
+      "y": -110,
+      "attrs": {
+        "color": "blue"
+      }
+    }
+  ],
+  "wires": [
+    {
+      "from": "display:COM.1",
+      "to": "rcom:2",
+      "color": "black"
+    },
+    {
+      "from": "rcom:1",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "roll:1.l",
+      "to": "uno:2",
+      "color": "blue"
+    },
+    {
+      "from": "roll:2.r",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "display:A",
+      "to": "uno:3",
+      "color": "green"
+    },
+    {
+      "from": "display:B",
+      "to": "uno:4",
+      "color": "green"
+    },
+    {
+      "from": "display:C",
+      "to": "uno:5",
+      "color": "green"
+    },
+    {
+      "from": "display:D",
+      "to": "uno:6",
+      "color": "green"
+    },
+    {
+      "from": "display:E",
+      "to": "uno:7",
+      "color": "green"
+    },
+    {
+      "from": "display:F",
+      "to": "uno:8",
+      "color": "green"
+    },
+    {
+      "from": "display:G",
+      "to": "uno:9",
+      "color": "green"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "lamp",
+      "type": "led",
+      "x": 150,
+      "y": -150,
+      "attrs": {
+        "color": "white"
+      }
+    },
+    {
+      "id": "r1",
+      "type": "resistor",
+      "x": 140,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "ldr",
+      "type": "photoresistor-sensor",
+      "x": 60,
+      "y": 260
+    }
+  ],
+  "wires": [
+    {
+      "from": "uno:9",
+      "to": "r1:2",
+      "color": "green"
+    },
+    {
+      "from": "r1:1",
+      "to": "lamp:A",
+      "color": "green"
+    },
+    {
+      "from": "lamp:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "ldr:VCC",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "ldr:GND",
+      "to": "uno:GND.2",
+      "color": "black"
+    },
+    {
+      "from": "ldr:AO",
+      "to": "uno:A0",
+      "color": "orange"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}

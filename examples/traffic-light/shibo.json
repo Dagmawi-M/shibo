@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "red",
+      "type": "led",
+      "x": 90,
+      "y": -150,
+      "attrs": {
+        "color": "red"
+      }
+    },
+    {
+      "id": "r_red",
+      "type": "resistor",
+      "x": 80,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "yellow",
+      "type": "led",
+      "x": 135,
+      "y": -150,
+      "attrs": {
+        "color": "yellow"
+      }
+    },
+    {
+      "id": "r_yellow",
+      "type": "resistor",
+      "x": 125,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "green",
+      "type": "led",
+      "x": 180,
+      "y": -150,
+      "attrs": {
+        "color": "green"
+      }
+    },
+    {
+      "id": "r_green",
+      "type": "resistor",
+      "x": 170,
+      "y": -80,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    }
+  ],
+  "wires": [
+    {
+      "from": "uno:12",
+      "to": "r_red:2",
+      "color": "green"
+    },
+    {
+      "from": "r_red:1",
+      "to": "red:A",
+      "color": "green"
+    },
+    {
+      "from": "red:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "uno:11",
+      "to": "r_yellow:2",
+      "color": "green"
+    },
+    {
+      "from": "r_yellow:1",
+      "to": "yellow:A",
+      "color": "green"
+    },
+    {
+      "from": "yellow:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "uno:10",
+      "to": "r_green:2",
+      "color": "green"
+    },
+    {
+      "from": "r_green:1",
+      "to": "green:A",
+      "color": "green"
+    },
+    {
+      "from": "green:C",
+      "to": "uno:GND.1",
+      "color": "black"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}

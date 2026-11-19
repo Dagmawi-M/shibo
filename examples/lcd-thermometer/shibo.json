@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "lcd",
+      "type": "lcd1602",
+      "x": -20,
+      "y": -260
+    },
+    {
+      "id": "ntc",
+      "type": "ntc-temperature-sensor",
+      "x": 120,
+      "y": 260
+    }
+  ],
+  "wires": [
+    {
+      "from": "lcd:VSS",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "lcd:VDD",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "lcd:V0",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "lcd:RW",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "lcd:RS",
+      "to": "uno:12",
+      "color": "blue"
+    },
+    {
+      "from": "lcd:E",
+      "to": "uno:11",
+      "color": "purple"
+    },
+    {
+      "from": "lcd:D4",
+      "to": "uno:5",
+      "color": "green"
+    },
+    {
+      "from": "lcd:D5",
+      "to": "uno:4",
+      "color": "green"
+    },
+    {
+      "from": "lcd:D6",
+      "to": "uno:3",
+      "color": "green"
+    },
+    {
+      "from": "lcd:D7",
+      "to": "uno:2",
+      "color": "green"
+    },
+    {
+      "from": "lcd:A",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "lcd:K",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "ntc:VCC",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "ntc:GND",
+      "to": "uno:GND.2",
+      "color": "black"
+    },
+    {
+      "from": "ntc:OUT",
+      "to": "uno:A0",
+      "color": "orange"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}
