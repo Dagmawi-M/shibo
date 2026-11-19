@@ -2,7 +2,7 @@
 // input alone, so the editor can undo, and so they are testable without a UI.
 import { library } from './parts/index.ts';
 import type { ControlDef, UiEvent } from './part.ts';
-import { canonicalPin, COLOR, ID, isBoard, partAttrs, validate, type Project } from './project.ts';
+import { canonicalPin, cleanPoints, COLOR, ID, isBoard, MAX_POINTS, partAttrs, validate, type Project } from './project.ts';
 
 export interface CatalogEntry {
   type: string; label: string; tag: string; group: string; board?: boolean; attrs?: string[];
@@ -138,5 +138,69 @@ export function setWireColor(p: Project, index: number, color: string): Project 
   if (typeof color !== 'string' || !COLOR.test(color)) throw new Error('that is not a colour that can be used');
   const project = clone(p);
   project.wires[index].color = color;
+  return project;
+}
+
+/** Bend a wire through these points (canvas units, from the project origin). None: route it automatically. */
+export function setWirePoints(p: Project, index: number, points: [number, number][]): Project {
+  if (!Number.isInteger(index) || index < 0 || index >= p.wires.length) throw new Error(`there is no wire number ${index}`);
+  if (!Array.isArray(points)) throw new Error('bend points must be a list of [x, y] pairs');
+  if (points.length > MAX_POINTS) throw new Error(`too many bend points (the limit is ${MAX_POINTS})`);
+  const clean = cleanPoints(points);
+  if (clean.length !== points.length) throw new Error('every bend point must be an [x, y] pair of numbers');
+  const project = clone(p);
+  if (clean.length) project.wires[index].points = clean; else delete project.wires[index].points;
+  return project;
+}
+
+const inSet = (ids: Set<string>, ref: string) => ids.has(ref.slice(0, ref.indexOf(':')));
+
+/** Move several parts by the same amount, as one edit. A wire whose both ends move takes its bends along. */
+export function moveParts(p: Project, ids: string[], dx: number, dy: number): Project {
+  number(dx, 'dx'); number(dy, 'dy');
+  if (!Array.isArray(ids)) throw new Error('moveParts needs a list of part ids');
+  const project = clone(p), set = new Set(ids);
+  for (const id of set) { const q = part(project, id); q.x += dx; q.y += dy; }
+  for (const w of project.wires) if (w.points && inSet(set, w.from) && inSet(set, w.to)) w.points = w.points.map(([x, y]) => [x + dx, y + dy]);
+  return project;
+}
+
+/** Remove several parts and every wire that touches one of them. */
+export function removeParts(p: Project, ids: string[]): Project {
+  if (!Array.isArray(ids)) throw new Error('removeParts needs a list of part ids');
+  return ids.reduce((q, id) => removePart(q, id), p);
+}
+
+/**
+ * Put copies of some parts into the project, offset by (dx, dy). Each gets a
+ * fresh name; settings and turns come along, and so does every wire whose two
+ * ends are both among the copied parts.
+ */
+export function pasteParts(p: Project, clip: { parts: Project['parts']; wires: Project['wires'] }, dx: number, dy: number): Project {
+  number(dx, 'dx'); number(dy, 'dy');
+  if (!clip || typeof clip !== 'object' || !Array.isArray(clip.parts) || !Array.isArray(clip.wires ?? [])) throw new Error('that is not something copied from a circuit');
+  let project = p;
+  const names = new Map<string, string>();
+  for (const q of clip.parts) {
+    if (!q || typeof q !== 'object') throw new Error('that is not something copied from a circuit');
+    const added = addPart(project, q.type, number(q.x, 'x') + dx, number(q.y, 'y') + dy);
+    project = added.project;
+    names.set(String(q.id), added.id);
+    const copy = part(project, added.id);
+    if ([90, 180, 270].includes(q.rot as number)) copy.rot = q.rot;
+    for (const [k, v] of Object.entries(q.attrs ?? {})) project = setAttr(project, added.id, k, v);
+  }
+  project = project === p ? clone(p) : project;
+  for (const w of clip.wires ?? []) {
+    if (!w || typeof w.from !== 'string' || typeof w.to !== 'string') continue;
+    const rename = (ref: string) => { const i = ref.indexOf(':'); const n = names.get(ref.slice(0, i)); return n ? n + ref.slice(i) : null; };
+    const from = rename(w.from), to = rename(w.to);
+    if (!from || !to) continue;
+    project = addWire(project, from, to);
+    const added = project.wires[project.wires.length - 1];
+    if (typeof w.color === 'string' && COLOR.test(w.color)) added.color = w.color;
+    const points = cleanPoints(w.points).map(([x, y]) => [x + dx, y + dy] as [number, number]);
+    if (points.length) added.points = points;
+  }
   return project;
 }
