@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rgb",
+      "type": "rgb-led",
+      "x": 150,
+      "y": -190,
+      "attrs": {
+        "common": "cathode"
+      }
+    },
+    {
+      "id": "r_red",
+      "type": "resistor",
+      "x": 70,
+      "y": -90,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "r_green",
+      "type": "resistor",
+      "x": 110,
+      "y": -90,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    },
+    {
+      "id": "r_blue",
+      "type": "resistor",
+      "x": 150,
+      "y": -90,
+      "attrs": {
+        "value": "220"
+      },
+      "rot": 90
+    }
+  ],
+  "wires": [
+    {
+      "from": "uno:9",
+      "to": "r_red:2",
+      "color": "red"
+    },
+    {
+      "from": "r_red:1",
+      "to": "rgb:R",
+      "color": "red"
+    },
+    {
+      "from": "uno:10",
+      "to": "r_green:2",
+      "color": "green"
+    },
+    {
+      "from": "r_green:1",
+      "to": "rgb:G",
+      "color": "green"
+    },
+    {
+      "from": "uno:11",
+      "to": "r_blue:2",
+      "color": "blue"
+    },
+    {
+      "from": "r_blue:1",
+      "to": "rgb:B",
+      "color": "blue"
+    },
+    {
+      "from": "rgb:COM",
+      "to": "uno:GND.1",
+      "color": "black"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}

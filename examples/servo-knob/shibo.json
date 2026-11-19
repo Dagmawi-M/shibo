@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "parts": [
+    {
+      "id": "uno",
+      "type": "uno",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "servo",
+      "type": "servo",
+      "x": 120,
+      "y": -180
+    },
+    {
+      "id": "knob",
+      "type": "potentiometer",
+      "x": 140,
+      "y": 250
+    }
+  ],
+  "wires": [
+    {
+      "from": "servo:GND",
+      "to": "uno:GND.1",
+      "color": "black"
+    },
+    {
+      "from": "servo:V+",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "servo:PWM",
+      "to": "uno:9",
+      "color": "orange"
+    },
+    {
+      "from": "knob:GND",
+      "to": "uno:GND.2",
+      "color": "black"
+    },
+    {
+      "from": "knob:VCC",
+      "to": "uno:5V",
+      "color": "red"
+    },
+    {
+      "from": "knob:SIG",
+      "to": "uno:A0",
+      "color": "green"
+    }
+  ],
+  "boards": [
+    {
+      "part": "uno",
+      "firmware": ""
+    }
+  ]
+}
