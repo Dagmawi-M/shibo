@@ -22,7 +22,7 @@ const led: PartDef = {
 
 const rgbLed: PartDef = {
   type: 'rgb-led', pins: ['R', 'G', 'B', 'COM'], attrs: ['common'],
-  ui: { label: 'RGB LED', tag: 'wokwi-rgb-led', group: 'Lights and sound', show: { ledRed: 'r', ledGreen: 'g', ledBlue: 'b' } },
+  ui: { label: 'RGB LED (common cathode)', tag: 'wokwi-rgb-led', group: 'Lights and sound', show: { ledRed: 'r', ledGreen: 'g', ledBlue: 'b' } },
   links: () => [],
   check: (id, see) => {
     const com = see.level(`${id}:COM`);

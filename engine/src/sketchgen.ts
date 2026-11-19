@@ -10,6 +10,12 @@ const each = (pins: string[], kind: Kind): Role[] => pins.map((p) => ({ pins: [p
 const BUTTON: Role[] = [{ pins: ['1.l', '1.r', '2.l', '2.r'], kind: 'pullup' }];
 const AO_DO: Role[] = [{ pins: ['AOUT'], kind: 'analog', suffix: 'AOUT' }, { pins: ['DOUT'], kind: 'in', suffix: 'DOUT' }];
 
+// Lights (engine/src/parts/lights.ts).
+const LIGHT_ROLES: Record<string, Role[]> = {
+  ...Object.fromEntries(['led-green', 'led-blue', 'led-yellow', 'led-white', 'led-orange', 'led-pink', 'led-purple', 'led-3mm', 'led-10mm', 'ir-led', 'led-resistor'].map((t) => [t, one('A', 'out')])),
+  'led-bicolor': each(['R', 'G'], 'out'), 'rgb-led-anode': each(['R', 'G', 'B'], 'out'), 'traffic-light': each(['R', 'Y', 'G'], 'out'), 'laser-module': one('S', 'out'),
+  'led-strip': one('DIN', 'out'), 'max7219-matrix': each(['DIN', 'CLK', 'CS'], 'out'), tm1637: each(['CLK', 'DIO'], 'out'),
+};
 /** What each part's pins are to a sketch. A part not listed here needs no pin setup. */
 const ROLES: Record<string, Role[]> = {
   led: one('A', 'out'), 'rgb-led': each(['R', 'G', 'B'], 'out'), buzzer: [{ pins: ['1', '2'], kind: 'out' }],
@@ -26,6 +32,7 @@ const ROLES: Record<string, Role[]> = {
   servo: one('PWM', 'out'), 'hc-sr04': [{ pins: ['TRIG'], kind: 'out', suffix: 'TRIG' }, { pins: ['ECHO'], kind: 'in', suffix: 'ECHO' }],
   dht22: one('SDA', 'in'), 'ir-receiver': one('DAT', 'in'), neopixel: one('DIN', 'out'), 'led-ring': one('DIN', 'out'), 'neopixel-matrix': one('DIN', 'out'),
   'stepper-motor': each(['A-', 'A+', 'B+', 'B-'], 'out'),
+  ...LIGHT_ROLES,
 };
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
 
