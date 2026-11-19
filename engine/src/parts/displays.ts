@@ -115,31 +115,42 @@ const oled: PartDef = {
 
 // ---------- WS2812 "NeoPixel" LEDs ----------
 const GRB = [1, 0, 2];            // the bytes arrive green, red, blue
-function pixels(ctx: PartCtx, count: number, vcc: string, gnd: string) {
-  const s = { pix: Array<number>(count * 3).fill(0), n: 0, cur: 0, upAt: -1, downAt: -1, last: null as Level };
+/**
+ * A chain of WS2812s. Each keeps the first 24 bits of a frame and passes the
+ * rest on through DOUT, so the next part in the chain gets what is left.
+ */
+export function pixelChain(ctx: PartCtx, count: number, vcc: string, gnd: string) {
+  const s = { pix: Array<number>(count * 3).fill(0), n: 0, cur: 0, upAt: -1, downAt: -1, last: null as Level, fwd: false };
   const onChange = (): void => {
-    const l = ctx.level('DIN'), now = ctx.now();
-    if (l === 1 && s.last !== 1) { if (s.downAt >= 0 && now - s.downAt > 50_000) s.n = 0; s.upAt = now; }      // a long low starts a new frame
-    if (l !== 1 && s.last === 1 && s.upAt >= 0 && powered(ctx, vcc, gnd)) {
-      // A one is a long high (about 0.8 us), a zero a short one (about 0.35 us).
-      const byte = Math.floor(s.n / 8);
-      if (byte < count * 3) {
+    const l = ctx.level('DIN'), now = ctx.now(), fed = powered(ctx, vcc, gnd);
+    if (l === 1 && s.last !== 1) {
+      if (s.downAt >= 0 && now - s.downAt > 50_000) s.n = 0;      // a long low starts a new frame
+      s.upAt = now;
+      if (fed && s.n >= count * 24) { s.fwd = true; ctx.changed(); }
+    }
+    if (l !== 1 && s.last === 1 && s.upAt >= 0 && fed) {
+      if (s.fwd) { s.fwd = false; ctx.changed(); }
+      else {
+        // A one is a long high (about 0.8 us), a zero a short one (about 0.35 us).
+        const byte = Math.floor(s.n / 8);
         s.cur = ((s.cur << 1) | (now - s.upAt > 550 ? 1 : 0)) & 255;
         if (s.n % 8 === 7) { s.pix[Math.floor(byte / 3) * 3 + GRB[byte % 3]] = s.cur; s.cur = 0; ctx.changed(); }
+        s.n++;
       }
-      s.n++; s.downAt = now;
+      s.downAt = now;
     }
     s.last = l;
   };
-  return { s, onChange };
+  const drives = () => (powered(ctx, vcc, gnd) ? [{ pin: 'DOUT', level: (s.fwd ? 1 : 0) as Level }] : []);
+  return { s, onChange, drives };
 }
 const neopixel: PartDef = {
   type: 'neopixel', pins: ['VDD', 'DOUT', 'VSS', 'DIN'],
   ui: { label: 'NeoPixel LED', tag: 'wokwi-neopixel', group: 'Displays', show: { r: 'r', g: 'g', b: 'b' } },
   links: () => [],
   device(ctx) {
-    const p = pixels(ctx, 1, 'VDD', 'VSS');
-    return { onChange: p.onChange, outputs: () => ({ r: p.s.pix[0] / 255, g: p.s.pix[1] / 255, b: p.s.pix[2] / 255 }), ...keep(p.s) };
+    const p = pixelChain(ctx, 1, 'VDD', 'VSS');
+    return { onChange: p.onChange, drives: p.drives, outputs: () => ({ r: p.s.pix[0] / 255, g: p.s.pix[1] / 255, b: p.s.pix[2] / 255 }), ...keep(p.s) };
   },
 };
 const strip = (type: string, label: string, count: (a: Record<string, string>) => number, attrs: string[]): PartDef => ({
@@ -147,8 +158,8 @@ const strip = (type: string, label: string, count: (a: Record<string, string>) =
   ui: { label, tag: `wokwi-${type}`, group: 'Displays', paint: 'pixels' },
   links: () => [],
   device(ctx) {
-    const p = pixels(ctx, Math.min(1024, Math.max(1, count(ctx.attrs))), 'VCC', 'GND');
-    return { onChange: p.onChange, outputs: () => ({ pixels: [...p.s.pix] }), ...keep(p.s) };
+    const p = pixelChain(ctx, Math.min(1024, Math.max(1, count(ctx.attrs))), 'VCC', 'GND');
+    return { onChange: p.onChange, drives: p.drives, outputs: () => ({ pixels: [...p.s.pix] }), ...keep(p.s) };
   },
 });
 
