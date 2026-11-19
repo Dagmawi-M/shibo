@@ -36,6 +36,7 @@ const ROLES: Record<string, Role[]> = {
   ...LIGHT_ROLES,
   l298n: each(['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB'], 'out'), l9110: each(['A-IA', 'A-IB', 'B-IA', 'B-IB'], 'out'), 'relay-module': one('IN', 'out'), 'relay-module-high': one('IN', 'out'), 'stepper-28byj48': each(['IN1', 'IN2', 'IN3', 'IN4'], 'out'),
   ...sensorRoles,
+  '74hc595': each(['DS', 'SHCP', 'STCP'], 'out'), '74hc165': [...each(['PL', 'CP'], 'out'), { pins: ['Q7'], kind: 'in', suffix: 'Q7' }], cd4051: [...each(['A', 'B', 'C'], 'out'), { pins: ['COM'], kind: 'analog', suffix: 'COM' }],
 };
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
 

@@ -59,13 +59,15 @@ export class Circuit implements Stateful {
   }
 
   private ctx(id: string, attrs: Record<string, string>): PartCtx {
+    const pins = new Map<string, string>();
     return {
       id, attrs,
-      level: (pin) => this.nets.level(this.node(`${id}:${pin}`)),
+      level: (pin) => { let n = pins.get(pin); if (n === undefined) pins.set(pin, n = this.node(`${id}:${pin}`)); return this.nets.level(n); },
       control: (name) => this.controls[id]?.[name] ?? 0,
       now: () => this.engine.time(),
       after: (dt, fn) => this.engine.at(this.engine.time() + Math.max(0, Math.round(dt)), fn),
       changed: () => this.update(true),
+      peers: () => Object.entries(this.devices).filter(([o]) => o !== id && this.types.get(o) === this.types.get(id)).map(([, d]) => d.peer),
     };
   }
 
@@ -83,6 +85,13 @@ export class Circuit implements Stateful {
     this.checkControl(partId, name, value);
     this.controls[partId][name] = value;
     this.update(true);
+  }
+
+  /** Text typed into a part's own box on the page. */
+  sendText(partId: string, text: string): void {
+    const d = this.devices[partId];
+    if (!d?.text) throw new Error(`${partId} does not take text`);
+    d.text(text); this.update(true);
   }
 
   outputs(): Outputs { return this.last; }
@@ -156,11 +165,13 @@ export class Circuit implements Stateful {
   private spiTransfer(b: ChipBackend, byte: number): number {
     const pins = b.spiPins;
     let reply = 0xff;
-    if (pins) for (const [id, d] of Object.entries(this.devices)) {
+    this.spiParts ??= Object.entries(this.devices).filter(([, d]) => d.spi);
+    if (pins) for (const [id, d] of this.spiParts) {
       if (!d.spi || this.nets.level(this.node(`${id}:${d.spi.cs}`)) !== 0) continue;
+      if (d.spi.sck && !this.onBus(b, pins.sck, d.spi.sck, id)) continue;
       reply = d.spi.transfer(byte) & 0xff;
     }
-    this.update(true);
+    // A screen takes thousands of bytes a frame: a part whose pins change because of a byte says so itself.
     return reply;
   }
 
@@ -193,6 +204,15 @@ export class Circuit implements Stateful {
         // What parts connect and drive can depend on levels (is it powered? is the coil on?).
         // If resolving changed that, resolve again with the new picture.
         if (this.gather().key !== g.key) { this.again = true; continue; }
+        // An analog input on a net held high or low with no analog source reads the rail.
+        const sourced = new Set(g.analog.map((a) => nets.net(this.node(a.node))));
+        for (const p of this.project.parts) {
+          const b = this.backends[p.id];
+          if (b && isBoard(p.type)) for (const pin of boardPins[p.type]) {
+            const node = `${p.id}:${pin}`, l = nets.level(node);
+            if (/^A\d$/.test(pin) && l !== null && !sourced.has(nets.net(node))) b.setAnalog(pin, l * 5);
+          }
+        }
         for (const a of g.analog) {
           const net = nets.net(this.node(a.node));
           for (const q of this.project.parts) {
@@ -237,11 +257,18 @@ export class Circuit implements Stateful {
 
   /** A wire end as a net node: numbered copies of a board pin become the one pin. */
   private node(ref: string): string {
+    // Asked for on every pin read; the answer never changes for one circuit.
+    let n = this.nodes.get(ref);
+    if (n !== undefined) return n;
     const i = ref.indexOf(':'); const id = ref.slice(0, i);
     const type = this.types.get(id);
     const pin = type ? canonicalPin(type, ref.slice(i + 1)) : null;
-    return pin === null ? ref : `${id}:${pin}`;
+    n = pin === null ? ref : `${id}:${pin}`;
+    this.nodes.set(ref, n);
+    return n;
   }
+  private nodes = new Map<string, string>();
+  private spiParts: [string, Device][] | null = null;
 
   private partsKey(): string { return this.project.parts.map((p) => `${p.id}:${p.type}`).sort().join(','); }
 

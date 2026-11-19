@@ -3,6 +3,7 @@
 // the engine sends back.
 import '@wokwi/elements';
 import './drawings/index.ts';
+import { paintTft } from './drawings/modules/paint.ts';
 import { connect } from './transport.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
@@ -12,7 +13,7 @@ interface ControlDef { kind: 'momentary' | 'toggle' | 'range'; min?: number; max
 interface UiEvent { on: string; control?: string; value?: number; delta?: number; from?: string }
 interface CatalogEntry {
   type: string; label: string; tag: string; group: string; attrs?: string[];
-  show?: Record<string, string>; events?: UiEvent[]; paint?: string; controls?: Record<string, ControlDef>;
+  show?: Record<string, string>; events?: UiEvent[]; paint?: string; controls?: Record<string, ControlDef>; chat?: boolean;
 }
 type PartEl = HTMLElement & { pinInfo?: { name: string; x: number; y: number }[]; updateComplete?: Promise<unknown> };
 type Selection = { kind: 'part'; id: string } | { kind: 'wire'; index: number } | null;
@@ -612,6 +613,10 @@ function sendControls(): void {
 }
 function showOutputs(outputs: Record<string, Record<string, unknown>>): void {
   lastOutputs = outputs;
+  for (const log of document.querySelectorAll<HTMLElement>('pre.chat')) {
+    const t = String(outputs[log.dataset.chat!]?.received ?? '');
+    if (log.textContent !== t) { log.textContent = t; log.scrollTop = log.scrollHeight; }
+  }
   for (const [id, el] of Object.entries(els) as [string, any][]) {
     const c = entry(id), o = outputs[id] ?? {};
     for (const [prop, key] of Object.entries(c?.show ?? {})) {
@@ -622,6 +627,7 @@ function showOutputs(outputs: Record<string, Record<string, unknown>>): void {
     }
     if (c?.paint === 'oled') paintOled(el, o);
     if (c?.paint === 'pixels') paintPixels(el, typeOf(id), o);
+    if (c?.paint === 'tft') paintTft(el, o);
   }
 }
 
@@ -661,8 +667,21 @@ function drawControls(): void {
   box.replaceChildren();
   for (const p of project.parts) {
     const labelled = Object.entries(entry(p.id)?.controls ?? {}).filter(([, d]) => d.label);
-    if (!labelled.length) continue;
+    const chat = entry(p.id)?.chat;
+    if (!labelled.length && !chat) continue;
     const h = document.createElement('h3'); h.textContent = p.id; box.append(h);
+    if (chat) {
+      // A phone talking to the module: what the board sent, and a box to send back.
+      const log = document.createElement('pre'); log.className = 'chat'; log.dataset.chat = p.id;
+      log.textContent = String(lastOutputs[p.id]?.received ?? '');
+      const say = document.createElement('input'); say.placeholder = 'Send from the phone (Enter)'; say.setAttribute('aria-label', `Send text to ${p.id}`);
+      say.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if (state !== 'running') { say.placeholder = 'Run the circuit first'; return; }
+        link.send({ t: 'serial', part: p.id, text: say.value + '\n' }); say.value = '';
+      });
+      box.append(log, say);
+    }
     for (const [name, d] of labelled) {
       const row = document.createElement('label'), text = document.createElement('span'), input = document.createElement('input'), out = document.createElement('output');
       text.textContent = d.label!;
