@@ -108,7 +108,7 @@ const solenoid: PartDef = {
 const hi = (l: Level) => (l === 1 ? 1 : 0);
 const l298n: PartDef = {
   type: 'l298n', pins: ['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB', 'OUT1', 'OUT2', 'OUT3', 'OUT4', '12V', 'GND', '5V'],
-  ui: { label: 'Motor driver (L298N)', tag: 'shibo-l298n', group: GROUP },
+  ui: { label: 'Motor driver (L298N)', tag: 'shibo-l298n', group: GROUP, show: { powered: 'powered' } },
   links: () => [],
   drives(id, _s, level) {
     if (level(`${id}:12V`) !== 1 || level(`${id}:GND`) !== 0) return [];
@@ -130,7 +130,7 @@ const l298n: PartDef = {
 
 const l9110: PartDef = {
   type: 'l9110', pins: ['B-IA', 'B-IB', 'GND', 'VCC', 'A-IA', 'A-IB', 'MOTOR-A1', 'MOTOR-A2', 'MOTOR-B1', 'MOTOR-B2'],
-  ui: { label: 'Motor driver (L9110)', tag: 'shibo-l9110', group: GROUP },
+  ui: { label: 'Motor driver (L9110)', tag: 'shibo-l9110', group: GROUP, show: { powered: 'powered' } },
   links: () => [],
   drives(id, _s, level) {
     if (!fed(level, id)) return [];
@@ -148,7 +148,7 @@ const l9110: PartDef = {
 const OPERATE_NS = 10e6, RELEASE_NS = 5e6;     // a small relay's armature takes this long to move
 const relayModule = (type: string, label: string, active: 0 | 1): PartDef => ({
   type, pins: ['VCC', 'GND', 'IN', 'COM', 'NO', 'NC'],
-  ui: { label, tag: 'shibo-relay-module', group: GROUP, show: { on: 'on' } },
+  ui: { label, tag: `shibo-${type}`, group: GROUP, show: { on: 'on' } },
   links: () => [],
   device(ctx) {
     const s = { on: false, want: false, seq: 0 };

@@ -31,7 +31,7 @@ const regulator = (type: string, label: string, volts: number): PartDef => ({
 const powerSwitch: PartDef = {
   contact: true,
   type: 'power-switch', pins: ['1', '2'],
-  ui: { label: 'Power switch', tag: 'shibo-power-switch', group: GROUP, show: { value: 'on' }, events: [{ on: 'input', control: 'on', from: 'value' }] },
+  ui: { label: 'Power switch', tag: 'shibo-power-switch', group: GROUP, events: [{ on: 'input', control: 'on', from: 'value' }] },
   controls: { on: { kind: 'toggle', initial: 0, label: 'On' } },
   links: (id, s) => (s.on ? [{ a: `${id}:1`, b: `${id}:2`, kind: 'wire' }] : []),
   outputs: (_id, _l, s) => ({ on: Boolean(s.on) }),
@@ -49,7 +49,7 @@ const fuse: PartDef = {
 /** The MB102 breadboard supply: a barrel jack in, two rails out, each set to 5 V or 3.3 V by a jumper. */
 const powerModule: PartDef = {
   type: 'power-module', pins: ['VCC1', 'GND1', 'VCC2', 'GND2'], attrs: ['left', 'right'],
-  ui: { label: 'Breadboard power module', tag: 'shibo-power-module', group: GROUP, show: { on: 'on' }, events: [{ on: 'input', control: 'on', from: 'value' }] },
+  ui: { label: 'Breadboard power module', tag: 'shibo-power-module', group: GROUP, events: [{ on: 'input', control: 'on', from: 'value' }] },
   controls: { on: { kind: 'toggle', initial: 1, label: 'On' } },
   links: () => [],
   device(ctx) {
