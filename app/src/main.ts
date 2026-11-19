@@ -3,6 +3,7 @@
 // the engine sends back.
 import '@wokwi/elements';
 import { connect } from './transport.ts';
+import { meterText, type ElectricalMsg } from './meter.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string }
@@ -125,7 +126,7 @@ link.onMessage((m) => {
       const was = state; state = m.state; timeMs = m.timeMs;
       if (state === 'building') { $('serial').textContent = ''; lastError = ''; drawProblems(); }
       if (state === 'running' && was !== 'running') { cancelWire(); sendControls(); }
-      if (state !== 'running' && was === 'running') showOutputs({});
+      if (state !== 'running' && was === 'running') { showOutputs({}); meter = null; drawMeter(); }
       canvas.classList.toggle('running', state === 'running');
       drawBar();
       break;
@@ -138,6 +139,7 @@ link.onMessage((m) => {
       pre.scrollTop = pre.scrollHeight;
       break;
     }
+    case 'electrical': meter = m as ElectricalMsg; drawMeter(); break;
     case 'problems': problems = m.items; drawProblems(); break;
     case 'error': lastError = m.message; drawProblems(); break;
     case 'guideCreated': hint(`Wrote ${String(m.path).split(/[\\/]/).pop()} in the project folder. Open it in a browser to print it.`); break;
@@ -399,6 +401,17 @@ function route(a: [number, number], b: [number, number]): string {
 }
 const WIRE_COLORS = ['red', 'black', 'green', 'blue', 'gold', 'orange', 'purple', 'gray', 'white'];
 
+let meter: ElectricalMsg | null = null;   // the latest voltages and currents, while running
+function wireTitle(i: number): string {
+  const w = project.wires[i], m = meterText(meter, i, w.from, w.to);
+  return `${w.from} → ${w.to}` + (m ? `\n${m}` : '');
+}
+/** Refresh what each wire reads, and mark parts with an electrical problem, without redrawing. */
+function drawMeter(): void {
+  wiresSvg.querySelectorAll<SVGPathElement>('path.hit').forEach((h) => { const t = h.querySelector('title'), i = Number(h.dataset.wire); if (t && project.wires[i]) t.textContent = wireTitle(i); });
+  for (const p of project.parts) document.querySelector(`[data-id="${CSS.escape(p.id)}"]`)?.classList.toggle('overloaded', meter?.parts[p.id] === 'warn');
+}
+
 function drawWires(): void {
   wiresSvg.replaceChildren();
   project.wires.forEach((wire, index) => {
@@ -412,7 +425,8 @@ function drawWires(): void {
     line.setAttribute('class', 'wire' + (selected?.kind === 'wire' && selected.index === index ? ' selected' : ''));
     const hit = document.createElementNS(SVG, 'path');
     hit.setAttribute('d', d); hit.setAttribute('class', 'hit');
-    const title = document.createElementNS(SVG, 'title'); title.textContent = `${wire.from} → ${wire.to}`; hit.append(title);
+    const title = document.createElementNS(SVG, 'title'); hit.append(title); hit.dataset.wire = String(index);
+    title.textContent = wireTitle(index);
     const pick = () => { selected = { kind: 'wire', index }; layout(); drawInventory(); };
     // Where a wire lies over a part, the part wins: it can always be picked up, and the wire is clicked where it runs free.
     hit.addEventListener('pointerdown', (e) => { const id = partUnder(e); if (id) startDrag(e as PointerEvent, id); });

@@ -181,3 +181,14 @@ test('the live monitor solves in the background and keeps each problem once, wit
   assert.equal(seen.length, 2, 'an unchanged circuit is not solved again');
   assert.equal(e.warnings().filter((w) => /led1 has/.test(w)).length, 1);
 });
+
+test('the wire meter reads volts and the way current flows', async () => {
+  const { meterText } = await import('../../app/src/meter.ts');
+  const m = { state: 'ok' as const, parts: {}, wires: [{ volts: 4.71, amps: 0.0131 }, { volts: 2.5, amps: -0.0005 }, { volts: 0, amps: null }, null] };
+  assert.equal(meterText(m, 0, 'u:13', 'r1:1'), '4.71 V, 13.1 mA from u:13 to r1:1');
+  assert.equal(meterText(m, 1, 'p:VCC', 'u:5V'), '2.50 V, 500 µA from u:5V to p:VCC');
+  assert.match(meterText(m, 2, 'a', 'b'), /closes a loop/);
+  assert.equal(meterText(m, 3, 'a', 'b'), 'Not measured');
+  assert.match(meterText({ state: 'unchecked', reason: 'ngspice was not found', wires: [], parts: {} }, 0, 'a', 'b'), /ngspice was not found/);
+  assert.equal(meterText(null, 0, 'a', 'b'), '');
+});
