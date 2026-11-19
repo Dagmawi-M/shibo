@@ -11,5 +11,7 @@ import { lights } from './lights.ts';
 import { actuators } from './actuators.ts';
 import { power } from './power.ts';
 
+import { sensorsMore } from './sensors-more.ts';
+
 /** Every part the engine has a model for, by type. */
-export const library: Record<string, PartDef> = Object.fromEntries([...basic, ...inputs, ...sensors, ...timing, ...motion, ...displays, ...bus, ...lights, ...actuators, ...power].map((d) => [d.type, d]));
+export const library: Record<string, PartDef> = Object.fromEntries([...basic, ...inputs, ...sensors, ...timing, ...motion, ...displays, ...bus, ...lights, ...actuators, ...power, ...sensorsMore].map((d) => [d.type, d]));

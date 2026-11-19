@@ -1,5 +1,6 @@
 // Writes a starter sketch from a circuit: one named constant per wired pin,
 // the right pinMode for each, and a loop that shows the wiring is alive.
+import { sensorRoles } from './parts/sensors-roles.ts';
 import { canonicalPin, isBoard, type Project } from './project.ts';
 
 type Kind = 'out' | 'in' | 'pullup' | 'analog';
@@ -34,6 +35,7 @@ const ROLES: Record<string, Role[]> = {
   'stepper-motor': each(['A-', 'A+', 'B+', 'B-'], 'out'),
   ...LIGHT_ROLES,
   l298n: each(['ENA', 'IN1', 'IN2', 'IN3', 'IN4', 'ENB'], 'out'), l9110: each(['A-IA', 'A-IB', 'B-IA', 'B-IB'], 'out'), 'relay-module': one('IN', 'out'), 'relay-module-high': one('IN', 'out'), 'stepper-28byj48': each(['IN1', 'IN2', 'IN3', 'IN4'], 'out'),
+  ...sensorRoles,
 };
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
 
