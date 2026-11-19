@@ -14,3 +14,5 @@ breakout('shibo-gps-neo6m', { title: 'GPS NEO-6M', pins: ['VCC', 'RX', 'TX', 'GN
   art: '<rect x="14" y="16" width="34" height="34" rx="2" fill="#c9a24a" stroke="#8a6d2a"/><rect x="20" y="22" width="22" height="22" fill="#e9d9a8"/><rect x="54" y="22" width="16" height="16" fill="#ddd" stroke="#888"/><text x="62" y="32" font-size="4" text-anchor="middle" fill="#333">u-blox</text>' });
 breakout('shibo-rc522', { title: 'RFID-RC522', pins: ['SDA', 'SCK', 'MOSI', 'MISO', 'IRQ', 'GND', 'RST', '3.3V'], color: '#1b4fa0', width: 96, height: 110,
   art: '<rect x="12" y="18" width="72" height="56" rx="4" fill="none" stroke="#d8b04a" stroke-width="2"/><rect x="18" y="24" width="60" height="44" rx="3" fill="none" stroke="#d8b04a" stroke-width="2"/><rect x="38" y="78" width="20" height="14" fill="#222"/>' });
+breakout('shibo-nrf24l01', { title: 'nRF24L01', pins: ['GND', 'VCC', 'CE', 'CSN', 'SCK', 'MOSI', 'MISO', 'IRQ'], color: '#2a6e3a', width: 96, height: 64,
+  art: '<path d="M10 18 h30 v8 h-24 v8 h24 v8 h-30" stroke="#d8b04a" stroke-width="2" fill="none"/><rect x="56" y="20" width="18" height="18" fill="#222"/>' });

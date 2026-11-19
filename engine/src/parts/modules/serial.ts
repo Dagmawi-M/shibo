@@ -22,7 +22,7 @@ const hc05: PartDef = {
       on: false, at: false, line: '', heard: '', name: 'HC-05', pin: '1234', role: 0, dataBaud: 9600,
       u: uartState(9600),
     };
-    const port = uart(ctx, s.u, 'RXD', (b) => {
+    const port = uart(ctx, () => s.u, 'RXD', (b) => {
       if (!s.at) { if (ctx.control('connected')) { s.heard = clip(s.heard + String.fromCharCode(b)); ctx.changed(); } return; }
       if (b === 10) { const cmd = s.line.replace(/\r$/, ''); s.line = ''; port.send(answer(cmd)); } else s.line += String.fromCharCode(b);
     }, () => s.on);
@@ -108,7 +108,7 @@ const gps: PartDef = {
   device(ctx) {
     const s = { on: false, u: uartState(9600), sent: 0 };
     // The module ignores what it is sent (UBX and PMTK configuration is not modelled).
-    const port = uart(ctx, s.u, 'RX', () => {});
+    const port = uart(ctx, () => s.u, 'RX', () => {});
     const c = (k: string) => ctx.control(k);
     const tick = (): void => {
       if (s.on) {

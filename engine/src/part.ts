@@ -25,6 +25,8 @@ export interface PartCtx {
   after(dt: Ns, fn: () => void): void;
   /** Say that what this part drives or shows has changed. */
   changed(): void;
+  /** What the other parts of the same type in the circuit offer (see Device.peer): radios find each other this way. */
+  peers(): unknown[];
 }
 
 /** A part with memory: it reacts over time, drives pins, or speaks a bus protocol. */
@@ -43,6 +45,8 @@ export interface Device {
   spi?: { cs: string; sck?: string; transfer(byte: number): number };
   /** Text typed into the part's own box on the page (a phone talking to a Bluetooth module). */
   text?(t: string): void;
+  /** Anything this part offers others of its own type, such as a radio's receiver. */
+  peer?: unknown;
   save(): unknown;
   restore(s: unknown): void;
 }

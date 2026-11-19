@@ -7,5 +7,6 @@ import { tft } from './tft.ts';
 import { sd } from './sd.ts';
 import { serialModules } from './serial.ts';
 import { rfid } from './rfid.ts';
+import { radios } from './nrf24.ts';
 
-export const modules: PartDef[] = [...logic, ...i2cChips, ...tft, ...sd, ...serialModules, ...rfid];
+export const modules: PartDef[] = [...logic, ...i2cChips, ...tft, ...sd, ...serialModules, ...rfid, ...radios];

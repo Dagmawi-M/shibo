@@ -67,6 +67,7 @@ export class Circuit implements Stateful {
       now: () => this.engine.time(),
       after: (dt, fn) => this.engine.at(this.engine.time() + Math.max(0, Math.round(dt)), fn),
       changed: () => this.update(true),
+      peers: () => Object.entries(this.devices).filter(([o]) => o !== id && this.types.get(o) === this.types.get(id)).map(([, d]) => d.peer),
     };
   }
 

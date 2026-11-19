@@ -303,3 +303,49 @@ test('RC522: MFRC522 reads the UID of a tapped card, authenticates, writes and r
   s.run(300);
   assert.equal(s.lines()[6], '12345678 1K');
 });
+
+test('nRF24L01: two radios on one board talk with RF24: acknowledged sends, ack payloads, and no listener means a failed send', async () => {
+  const s = await fw(`#include <SPI.h>
+    #include <RF24.h>
+    RF24 tx(7, 8), rx(9, 10);
+    const byte addr[6] = "NODE1";
+    void setup() { Serial.begin(9600);
+      Serial.println(tx.begin() && rx.begin() ? "begin" : "nobegin");
+      tx.openWritingPipe(addr); rx.openReadingPipe(1, addr);
+      Serial.println(tx.write("lost", 5) ? "sent" : "failed");          // nobody listening yet
+      rx.startListening();
+      Serial.println(tx.write("hello", 6) ? "sent" : "failed");
+      uint8_t pipe; char buf[32] = "";
+      if (rx.available(&pipe)) { rx.read(buf, 6); Serial.print(pipe); Serial.print(' '); Serial.println(buf); }
+      rx.setChannel(90);
+      Serial.println(tx.write("other", 6) ? "sent" : "failed");          // different channel
+      tx.setChannel(90); tx.enableDynamicPayloads(); tx.enableAckPayload(); rx.enableDynamicPayloads(); rx.enableAckPayload();
+      rx.writeAckPayload(1, "pong", 5);
+      Serial.println(tx.write("ping", 5) ? "sent" : "failed");
+      if (tx.available()) { tx.read(buf, tx.getDynamicPayloadSize()); Serial.println(buf); }
+      if (rx.available()) { byte n = rx.getDynamicPayloadSize(); rx.read(buf, n); Serial.print(n); Serial.print(' '); Serial.println(buf); }
+    }
+    void loop() {}`,
+    [{ id: 'a', type: 'nrf24l01' }, { id: 'b', type: 'nrf24l01' }],
+    [...power('a'), ...power('b'), ['a:CE', 'u:7'], ['a:CSN', 'u:8'], ['b:CE', 'u:9'], ['b:CSN', 'u:10'],
+      ...(['a', 'b'].flatMap((r) => [[`${r}:SCK`, 'u:13'], [`${r}:MOSI`, 'u:11'], [`${r}:MISO`, 'u:12']]) as [string, string][])]);
+  s.run(400);
+  assert.deepEqual(s.lines(), ['begin', 'failed', 'sent', '1 hello', 'failed', 'sent', 'pong', '5 ping']);
+  assert.equal(s.out('a').sent, 2); assert.equal(s.out('b').heard, 2);
+});
+
+test('HC-05: still passes bytes after the simulation is rewound to a snapshot', async () => {
+  const s = await fw(`#include <SoftwareSerial.h>
+    SoftwareSerial bt(10, 11);
+    void setup() { Serial.begin(9600); bt.begin(9600); }
+    void loop() { while (bt.available()) { char c = bt.read(); Serial.write(c); if (c == '\\n') bt.print("ok\\n"); } }`,
+    [{ id: 'b', type: 'hc05' }],
+    [...power('b'), ['b:TXD', 'u:10'], ['b:RXD', 'u:11']]);
+  s.run(20);
+  const snap = s.engine.snapshot();
+  s.circuit.sendText('b', 'one\n'); s.run(30);
+  s.engine.restore(snap);
+  s.circuit.sendText('b', 'two\n'); s.run(30);
+  assert.equal(s.lines().at(-1), 'two');
+  assert.equal(s.out('b').received, 'ok\n', 'the reply reaches the phone, once');
+});
