@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs",
     "app": "node scripts/build.mjs && node server/standalone.ts",
     "pretest": "node scripts/build.mjs",
-    "package": "node scripts/build.mjs && cd extension && npx --yes @vscode/vsce package --allow-missing-repository --no-dependencies"
+    "package": "node scripts/build.mjs && cd extension && npx --yes @vscode/vsce package --allow-missing-repository --no-dependencies",
+    "test:browser": "node scripts/build.mjs && node --test --test-concurrency=1 \"tests/browser/*.test.ts\""
   },
   "dependencies": {
     "@wokwi/elements": "^1.9.2",
