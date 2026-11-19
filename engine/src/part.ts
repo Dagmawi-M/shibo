@@ -6,7 +6,7 @@ export interface ControlDef { kind: 'momentary' | 'toggle' | 'range'; min?: numb
 /** How the page maps a drawing's own events onto controls. */
 export interface UiEvent { on: string; control?: string; value?: number; delta?: number; from?: 'value' | 'pot' | 'dip' | 'keypad' | 'joystick' | 'ir' | 'digit' }
 /** How a part appears in the editor. `show` maps drawing properties to output names. */
-export interface PartUi { label: string; tag: string; group: string; show?: Record<string, string>; events?: UiEvent[]; paint?: 'lcd' | 'oled' | 'pixels' | 'tft' }
+export interface PartUi { label: string; tag: string; group: string; show?: Record<string, string>; events?: UiEvent[]; paint?: 'lcd' | 'oled' | 'pixels' | 'tft'; chat?: boolean }
 type LevelOf = (node: string) => Level;
 
 export type OutputValue = number | boolean | string | number[];
@@ -41,6 +41,8 @@ export interface Device {
   i2c?: { sda: string; scl: string; address(): number; start?(write: boolean): void; write(byte: number): boolean; read(ack: boolean): number; stop?(): void };
   /** `sck`: the part's clock pin; when given, the part only hears transfers if that pin is on the board's SPI clock. Call ctx.changed() if a byte changes what the part drives. */
   spi?: { cs: string; sck?: string; transfer(byte: number): number };
+  /** Text typed into the part's own box on the page (a phone talking to a Bluetooth module). */
+  text?(t: string): void;
   save(): unknown;
   restore(s: unknown): void;
 }

@@ -86,6 +86,13 @@ export class Circuit implements Stateful {
     this.update(true);
   }
 
+  /** Text typed into a part's own box on the page. */
+  sendText(partId: string, text: string): void {
+    const d = this.devices[partId];
+    if (!d?.text) throw new Error(`${partId} does not take text`);
+    d.text(text); this.update(true);
+  }
+
   outputs(): Outputs { return this.last; }
   contended(): string[] { return this.lastContended; }
 

@@ -5,5 +5,6 @@ import { logic } from './logic.ts';
 import { i2cChips } from './i2c.ts';
 import { tft } from './tft.ts';
 import { sd } from './sd.ts';
+import { serialModules } from './serial.ts';
 
-export const modules: PartDef[] = [...logic, ...i2cChips, ...tft, ...sd];
+export const modules: PartDef[] = [...logic, ...i2cChips, ...tft, ...sd, ...serialModules];

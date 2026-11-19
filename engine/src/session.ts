@@ -26,7 +26,7 @@ export type InMsg =
   | { t: 'start' }
   | { t: 'stop' }
   | { t: 'control'; part: string; name: string; value: number }
-  | { t: 'serial'; text: string };
+  | { t: 'serial'; text: string; part?: string };
 
 import type { Outputs } from './circuit.ts';
 export type { Outputs };
@@ -100,7 +100,8 @@ export class Session {
           if (typeof m.text !== 'string') throw new Error('serial text must be text');
           const bytes = new TextEncoder().encode(m.text);
           if (bytes.length > MAX_SERIAL) throw new Error(`that is too long to send at once (${bytes.length} bytes; the limit is ${MAX_SERIAL})`);
-          if (this.run) for (const b of bytes) this.run.uno.serialWrite(b);
+          if (m.part) this.run?.circuit.sendText(String(m.part), m.text);
+          else if (this.run) for (const b of bytes) this.run.uno.serialWrite(b);
           break;
         }
         default: throw new Error(`unknown message ${(m as { t: string }).t}`);

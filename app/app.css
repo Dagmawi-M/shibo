@@ -136,6 +136,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--select); ou
 .welcome .starts span { color: var(--mute); font-size: 12px; }
 .controls h3 { margin: 8px 4px 2px; font-size: 12px; font-weight: 600; }
 .controls label { display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 6px; align-items: center; padding: 2px 4px; font-size: 12px; }
+.controls pre.chat { margin: 2px 4px; padding: 4px 6px; max-height: 120px; min-height: 2.6em; overflow: auto; background: var(--term-bg); color: var(--term-ink); font: 11px/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; border-radius: 3px; }
+.controls pre.chat + input { margin: 2px 4px 6px; width: calc(100% - 8px); font: 12px ui-monospace, monospace; padding: 3px 6px; }
 .controls input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); }
 .controls input[type=checkbox] { justify-self: start; accent-color: var(--accent); }
 .controls output { font-variant-numeric: tabular-nums; color: var(--mute); min-width: 7ch; text-align: right; }

@@ -6,7 +6,7 @@ import { canonicalPin, COLOR, ID, isBoard, partAttrs, validate, type Project } f
 
 export interface CatalogEntry {
   type: string; label: string; tag: string; group: string; board?: boolean; attrs?: string[];
-  show?: Record<string, string>; events?: UiEvent[]; paint?: string; controls?: Record<string, ControlDef>;
+  show?: Record<string, string>; events?: UiEvent[]; paint?: string; controls?: Record<string, ControlDef>; chat?: boolean;
 }
 
 /** What the palette offers: the boards, then every library part. `tag` is the drawing. */
@@ -16,7 +16,7 @@ export const catalog: CatalogEntry[] = [
   ...Object.values(library).filter((d) => d.ui).map((d) => ({
     type: d.type, label: d.ui!.label, tag: d.ui!.tag, group: d.ui!.group,
     ...(d.attrs?.length ? { attrs: d.attrs } : {}), ...(d.ui!.show ? { show: d.ui!.show } : {}), ...(d.ui!.events ? { events: d.ui!.events } : {}),
-    ...(d.ui!.paint ? { paint: d.ui!.paint } : {}), ...(d.controls ? { controls: d.controls } : {}),
+    ...(d.ui!.paint ? { paint: d.ui!.paint } : {}), ...(d.ui!.chat ? { chat: true } : {}), ...(d.controls ? { controls: d.controls } : {}),
   })),
 ];
 

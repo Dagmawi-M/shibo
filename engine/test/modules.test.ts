@@ -227,3 +227,46 @@ test('microSD: with the card taken out SD.begin fails', async () => {
   s.run(3000);
   assert.deepEqual(s.lines(), ['no card']);
 });
+
+test('HC-05: data mode passes bytes both ways over SoftwareSerial; STATE shows the phone', async () => {
+  const s = await fw(`#include <SoftwareSerial.h>
+    SoftwareSerial bt(10, 11);
+    void setup() { Serial.begin(9600); bt.begin(9600); pinMode(4, INPUT); delay(50); bt.print("hello phone"); }
+    void loop() { while (bt.available()) Serial.write(bt.read()); if (Serial.available()) {} }`,
+    [{ id: 'b', type: 'hc05' }],
+    [...power('b'), ['b:TXD', 'u:10'], ['b:RXD', 'u:11'], ['b:EN', 'u:GND'], ['b:STATE', 'u:4']]);
+  s.run(100);
+  assert.equal(s.out('b').received, 'hello phone');
+  assert.equal(s.out('b').mode, 'data');
+  s.circuit.sendText('b', 'hi board\n');
+  s.run(50);
+  assert.equal(s.lines().at(-1), 'hi board');
+});
+
+test('HC-05: EN high at power-up gives AT command mode at 38400', async () => {
+  const s = await fw(`#include <SoftwareSerial.h>
+    SoftwareSerial bt(10, 11);
+    void ask(const char *c) { bt.print(c); bt.print("\\r\\n"); unsigned long t = millis(); while (millis() - t < 40) while (bt.available()) Serial.write(bt.read()); }
+    void setup() { Serial.begin(9600); bt.begin(38400); delay(20);
+      ask("AT"); ask("AT+NAME=Robot"); ask("AT+NAME?"); ask("AT+UART?"); ask("AT+FOO"); }
+    void loop() {}`,
+    [{ id: 'b', type: 'hc05' }],
+    [...power('b'), ['b:TXD', 'u:10'], ['b:RXD', 'u:11'], ['b:EN', 'u:5V']]);
+  s.run(300);
+  assert.deepEqual(s.lines(), ['OK', 'OK', '+NAME:Robot', 'OK', '+UART:9600,0,0', 'OK', 'ERROR:(0)']);
+});
+
+test('GPS NEO-6M: TinyGPSPlus reads the position and height set on the panel', async () => {
+  const s = await fw(`#include <SoftwareSerial.h>
+    #include <TinyGPSPlus.h>
+    SoftwareSerial ss(4, 3); TinyGPSPlus gps;
+    void setup() { Serial.begin(9600); ss.begin(9600); }
+    void loop() { while (ss.available()) if (gps.encode(ss.read()) && gps.location.isUpdated()) {
+      Serial.print(gps.location.lat(), 4); Serial.print(' '); Serial.print(gps.location.lng(), 4); Serial.print(' ');
+      Serial.print(gps.altitude.meters(), 0); Serial.print(' '); Serial.println(gps.satellites.value()); } }`,
+    [{ id: 'g', type: 'gps-neo6m' }],
+    [...power('g'), ['g:TX', 'u:4'], ['g:RX', 'u:3']]);
+  s.control('g', 'lat', -33.8688); s.control('g', 'lon', 151.2093); s.control('g', 'alt', 58);
+  s.run(1300);
+  assert.equal(last(s), '-33.8688 151.2093 58 8');
+});
