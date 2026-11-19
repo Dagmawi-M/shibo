@@ -11,6 +11,7 @@ export interface Project {
 export const boardPins: Record<string, string[]> = {
   uno: [...Array.from({ length: 14 }, (_, i) => String(i)), 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', '5V', '3.3V', 'GND', 'VIN', 'AREF', 'IOREF', 'RESET'],
   nano: [...Array.from({ length: 14 }, (_, i) => String(i)), 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', '5V', '3.3V', 'GND', 'VIN', 'AREF', 'RESET'],
+  attiny85: ['0', '1', '2', '3', '4', '5', '5V', 'GND', 'VIN'],
   mega: [...Array.from({ length: 54 }, (_, i) => String(i)), ...Array.from({ length: 16 }, (_, i) => 'A' + i), '5V', '3.3V', 'GND', 'VIN', 'AREF', 'IOREF', 'RESET'],
 };
 

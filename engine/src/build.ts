@@ -14,6 +14,8 @@ const FQBN: Record<string, string> = {
   uno: 'arduino:avr:uno',
   nano: 'arduino:avr:nano:cpu=atmega328',
   mega: 'arduino:avr:mega:cpu=atmega2560',
+  // ATTinyCore's Micronucleus (Digispark) board, at 16 MHz: USB cannot be emulated, so no 16.5 MHz USB tuning.
+  attiny85: 'ATTinyCore:avr:attinyx5micr:sketchclock=16pll',
 };
 
 /** The arduino-cli FQBN for a board type, or undefined if Shibo cannot compile for it. */

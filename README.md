@@ -16,7 +16,7 @@
 
 ## Parts
 
-- **Boards:** Arduino Uno, Arduino Nano, Arduino Mega 2560 (all 70 pins, A0-A15, Serial to Serial3, external and pin-change interrupts, all six timers).
+- **Boards:** Arduino Uno, Arduino Nano, Arduino Mega 2560 (all 70 pins, A0-A15, Serial to Serial3, external and pin-change interrupts, all six timers), ATtiny85 (Digispark-style, ATTinyCore at 16 MHz: P0-P5, ADC on P2-P5, PWM on P0/P1/P4, software Serial with TX on P0 and RX on P1).
 - **Lights and sound:** LED, RGB LED, LED bar graph, 7-segment display, Buzzer.
 - **Basics:** Resistor.
 - **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
@@ -25,7 +25,7 @@
 - **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307).
 - **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix.
 
-Boards so far: Arduino Uno, Nano and Mega 2560. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
+Boards so far: Arduino Uno, Nano, Mega 2560 and ATtiny85. The ATtiny85 needs ATTinyCore (`arduino-cli core install ATTinyCore:avr` with its board-manager URL) and builds as `ATTinyCore:avr:attinyx5micr:sketchclock=16pll`; USB (V-USB/DigiKeyboard) is not simulated. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
 
 ## Install
 

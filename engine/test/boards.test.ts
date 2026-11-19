@@ -193,3 +193,64 @@ test('the session builds for and runs whichever board is in the circuit', async 
   assert.equal((out.filter((m) => m.t === 'outputs').at(-1) as any).outputs.led1.lit, true);
   s.dispose();
 });
+
+// ---- ATtiny85 (ATTinyCore, Digispark-style) ----
+
+test('ATtiny85: blink on pin 1 keeps time, and analogRead(A1) reads pin 2', async () => {
+  const hex = await compile('attiny85', `
+void setup() { pinMode(1, OUTPUT); }
+void loop() { digitalWrite(1, analogRead(A1) > 512); delay(10); digitalWrite(1, millis() / 500 % 2); delay(10); }`);
+  const t = createBackend('attiny85', 't', hex);
+  const at = (p: string) => t.drives().find((d) => d.pin === p)?.level;
+  t.setAnalog('2', 1);
+  t.runUntil(250 * MS);
+  // Between the two writes the pin follows the clock: low in the first half second, high in the next.
+  const seen = (from: number, to: number) => { const s = new Set<unknown>(); for (let ms = from; ms < to; ms += 1) { t.runUntil(ms * MS); s.add(at('1')); } return s; };
+  assert.deepEqual([...seen(250, 450)], [0]);
+  assert.deepEqual([...seen(560, 950)].sort(), [0, 1]);   // A1 low writes 0, the clock writes 1
+  t.setAnalog('2', 4);
+  assert.deepEqual([...seen(1560, 1950)], [1]);
+  assert.deepEqual([...seen(2000, 2001)].length, 1);
+});
+
+test('ATtiny85: Serial (software, TX on pin 0) reaches the monitor at the baud the sketch chose', async () => {
+  for (const baud of [9600, 57600]) {
+    const t = createBackend('attiny85', 't', await compile('attiny85', `
+void setup() { Serial.begin(${baud}); Serial.println("hello tiny"); }
+void loop() { Serial.println(millis() / 100); delay(100); }`));
+    let s = ''; t.onSerial((b) => { s += String.fromCharCode(b); });
+    for (let ms = 10; ms <= 350; ms += 10) t.runUntil(ms * MS);
+    const l = lines(s);
+    assert.equal(l[0], 'hello tiny', `${baud}: ${JSON.stringify(s)}`);
+    assert.deepEqual(l.slice(1, 4), ['0', '1', '2'], `${baud}: ${JSON.stringify(s)}`);
+  }
+});
+
+test('ATtiny85: Serial input arrives on pin 1 through the analog comparator', async () => {
+  const t = createBackend('attiny85', 't', await compile('attiny85', `
+void setup() { Serial.begin(9600); Serial.println("ready"); }
+// Software serial cannot send and receive at once, so collect a line, then answer.
+char buf[16]; byte n = 0; unsigned long last = 0;
+void loop() {
+  if (Serial.available()) { char c = Serial.read(); if (n < 15) buf[n++] = c == 'a' ? 'A' : c; last = millis(); }
+  else if (n && millis() - last > 20) { buf[n] = 0; Serial.println(buf); n = 0; }
+}`));
+  let s = ''; t.onSerial((b) => { s += String.fromCharCode(b); });
+  t.setInput('1', 1);
+  t.runUntil(50 * MS);
+  for (const c of 'abc') t.serialWrite(c.charCodeAt(0));
+  for (let ms = 60; ms <= 150; ms += 10) t.runUntil(ms * MS);
+  assert.equal(s.replace(/\r?\n/g, '|'), 'ready|Abc|');
+});
+
+test('ATtiny85: PWM on pin 4 (Timer1) and pin 0 (Timer0)', async () => {
+  const t = createBackend('attiny85', 't', await compile('attiny85', `void setup() { analogWrite(4, 64); analogWrite(0, 192); } void loop() {}`));
+  t.runUntil(10 * MS);
+  const high: Record<string, number> = { '4': 0, '0': 0 }; let n = 0;
+  for (let ms = 10; ms < 30; ms += 0.01) {
+    t.runUntil(ms * MS); n++;
+    for (const p of ['4', '0']) if (t.drives().find((d) => d.pin === p)?.level === 1) high[p]++;
+  }
+  assert.ok(Math.abs(high['4'] / n - 0.25) < 0.05, `pin 4 duty ${high['4'] / n}`);
+  assert.ok(Math.abs(high['0'] / n - 0.75) < 0.05, `pin 0 duty ${high['0'] / n}`);
+});
