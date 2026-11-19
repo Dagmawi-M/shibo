@@ -39,7 +39,7 @@ export interface Device {
   display?(): Record<string, OutputValue>;
   analog?(): { pin: string; volts: number }[];
   i2c?: { sda: string; scl: string; address(): number; start?(write: boolean): void; write(byte: number): boolean; read(ack: boolean): number; stop?(): void };
-  /** `sck`: the part's clock pin; when given, the part only hears transfers if that pin is on the board's SPI clock. */
+  /** `sck`: the part's clock pin; when given, the part only hears transfers if that pin is on the board's SPI clock. Call ctx.changed() if a byte changes what the part drives. */
   spi?: { cs: string; sck?: string; transfer(byte: number): number };
   save(): unknown;
   restore(s: unknown): void;

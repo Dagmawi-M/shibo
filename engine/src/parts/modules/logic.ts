@@ -45,7 +45,7 @@ const hc595: PartDef = {
         s.sh = sh; s.st = st;
       },
       // With hardware SPI the clock pulses are not seen one by one: a whole byte arrives, most significant bit first.
-      spi: { cs: 'STCP', sck: 'SHCP', transfer(b) { const out = s.sr; if (on() && ctx.level('MR') !== 0) s.sr = b & 255; return out; } },
+      spi: { cs: 'STCP', sck: 'SHCP', transfer(b) { const out = s.sr; if (on() && ctx.level('MR') !== 0) { s.sr = b & 255; ctx.changed(); } return out; } },
       outputs: () => ({ values: Array.from({ length: 8 }, (_, i) => (s.latch >> i) & 1), powered: on() }),
       ...keep(s),
     };
@@ -78,7 +78,7 @@ const hc165: PartDef = {
         cs: 'CE', sck: 'CP',
         transfer() {
           if (!on() || ctx.level('PL') === 0) return on() ? load() : 0xff;
-          const out = s.sr; s.sr = ctx.level('DS') === 1 ? 255 : 0; return out;
+          const out = s.sr; s.sr = ctx.level('DS') === 1 ? 255 : 0; ctx.changed(); return out;
         },
       },
       outputs: () => ({ powered: on() }),

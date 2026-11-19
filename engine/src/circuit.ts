@@ -59,9 +59,10 @@ export class Circuit implements Stateful {
   }
 
   private ctx(id: string, attrs: Record<string, string>): PartCtx {
+    const pins = new Map<string, string>();
     return {
       id, attrs,
-      level: (pin) => this.nets.level(this.node(`${id}:${pin}`)),
+      level: (pin) => { let n = pins.get(pin); if (n === undefined) pins.set(pin, n = this.node(`${id}:${pin}`)); return this.nets.level(n); },
       control: (name) => this.controls[id]?.[name] ?? 0,
       now: () => this.engine.time(),
       after: (dt, fn) => this.engine.at(this.engine.time() + Math.max(0, Math.round(dt)), fn),
@@ -156,12 +157,13 @@ export class Circuit implements Stateful {
   private spiTransfer(b: ChipBackend, byte: number): number {
     const pins = b.spiPins;
     let reply = 0xff;
-    if (pins) for (const [id, d] of Object.entries(this.devices)) {
+    this.spiParts ??= Object.entries(this.devices).filter(([, d]) => d.spi);
+    if (pins) for (const [id, d] of this.spiParts) {
       if (!d.spi || this.nets.level(this.node(`${id}:${d.spi.cs}`)) !== 0) continue;
       if (d.spi.sck && !this.onBus(b, pins.sck, d.spi.sck, id)) continue;
       reply = d.spi.transfer(byte) & 0xff;
     }
-    this.update(true);
+    // A screen takes thousands of bytes a frame: a part whose pins change because of a byte says so itself.
     return reply;
   }
 
@@ -247,11 +249,18 @@ export class Circuit implements Stateful {
 
   /** A wire end as a net node: numbered copies of a board pin become the one pin. */
   private node(ref: string): string {
+    // Asked for on every pin read; the answer never changes for one circuit.
+    let n = this.nodes.get(ref);
+    if (n !== undefined) return n;
     const i = ref.indexOf(':'); const id = ref.slice(0, i);
     const type = this.types.get(id);
     const pin = type ? canonicalPin(type, ref.slice(i + 1)) : null;
-    return pin === null ? ref : `${id}:${pin}`;
+    n = pin === null ? ref : `${id}:${pin}`;
+    this.nodes.set(ref, n);
+    return n;
   }
+  private nodes = new Map<string, string>();
+  private spiParts: [string, Device][] | null = null;
 
   private partsKey(): string { return this.project.parts.map((p) => `${p.id}:${p.type}`).sort().join(','); }
 

@@ -3,6 +3,7 @@
 // the engine sends back.
 import '@wokwi/elements';
 import './drawings/index.ts';
+import { paintTft } from './drawings/modules/paint.ts';
 import { connect } from './transport.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
@@ -622,6 +623,7 @@ function showOutputs(outputs: Record<string, Record<string, unknown>>): void {
     }
     if (c?.paint === 'oled') paintOled(el, o);
     if (c?.paint === 'pixels') paintPixels(el, typeOf(id), o);
+    if (c?.paint === 'tft') paintTft(el, o);
   }
 }
 

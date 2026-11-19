@@ -161,3 +161,39 @@ test('each custom drawing has exactly the pins of its part', async () => {
     assert.equal(library[type].ui!.tag, `shibo-${type}`);
   }
 });
+
+/** The TFT frame the page is sent, back as 240x320 RGB565 values. */
+function unpack(frame: string): Uint16Array {
+  const pairs = new Uint16Array(new Uint8Array(Buffer.from(frame, 'base64')).buffer), px = new Uint16Array(240 * 320);
+  let at = 0;
+  for (let i = 0; i < pairs.length; i += 2) { px.fill(pairs[i + 1], at, at + pairs[i]); at += pairs[i]; }
+  assert.equal(at, px.length, 'the frame covers the whole screen');
+  return px;
+}
+
+test('ILI9341: Adafruit_ILI9341 fills, draws in every rotation, and answers its status reads', async () => {
+  const s = await fw(`#include <Adafruit_ILI9341.h>
+    Adafruit_ILI9341 tft(10, 9);
+    void setup() { Serial.begin(115200); tft.begin();
+      Serial.println(tft.readcommand8(ILI9341_RDMODE), HEX); Serial.println(tft.readcommand8(ILI9341_RDMADCTL), HEX);
+      tft.fillScreen(ILI9341_BLUE);
+      tft.fillRect(10, 20, 30, 40, ILI9341_RED);
+      tft.setRotation(1); tft.drawPixel(0, 0, ILI9341_GREEN);
+      tft.setRotation(2); tft.drawPixel(0, 0, ILI9341_WHITE);
+      tft.setRotation(3); tft.drawPixel(0, 0, ILI9341_YELLOW);
+      Serial.println("done"); }
+    void loop() {}`,
+    [{ id: 't', type: 'ili9341' }], [...power('t'), ['t:LED', 'u:5V'], ['t:CS', 'u:10'], ['t:D/C', 'u:9'], ['t:MOSI', 'u:11'], ['t:SCK', 'u:13'], ['t:MISO', 'u:12']]);
+  const t0 = Date.now();
+  s.run(1500);
+  const wall = Date.now() - t0;
+  assert.deepEqual(s.lines(), ['9C', '48', 'done']);
+  const d = s.show('t'); assert.equal(d.on, true); assert.equal(d.backlight, true);
+  const px = unpack(d.frame as string), at = (x: number, y: number) => px[y * 240 + x];
+  assert.equal(at(120, 200), 0x001f, 'blue background');
+  assert.equal(at(10, 20), 0xf800); assert.equal(at(39, 59), 0xf800); assert.equal(at(40, 59), 0x001f, 'red box is 30 by 40');
+  assert.equal(at(239, 0), 0x07e0, 'rotation 1 (landscape) starts at the top right');
+  assert.equal(at(239, 319), 0xffff, 'rotation 2 starts at the bottom right');
+  assert.equal(at(0, 319), 0xffe0, 'rotation 3 starts at the bottom left');
+  console.log(`ILI9341 test: 1.5 s simulated in ${wall} ms`);
+});
