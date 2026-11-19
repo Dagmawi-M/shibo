@@ -53,6 +53,7 @@ const EDITS = new Map<string, (p: Project, ...a: any[]) => Project>([
   ['movePart', edit.movePart], ['removePart', edit.removePart], ['addWire', edit.addWire],
   ['removeWire', edit.removeWire], ['setAttr', edit.setAttr], ['pruneWires', edit.pruneWires],
   ['rotatePart', edit.rotatePart], ['renamePart', edit.renamePart], ['setWireColor', edit.setWireColor],
+  ['setWirePoints', edit.setWirePoints], ['moveParts', edit.moveParts], ['removeParts', edit.removeParts], ['pasteParts', edit.pasteParts],
 ]);
 
 export class Session {

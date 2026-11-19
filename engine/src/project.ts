@@ -3,7 +3,7 @@ import { library } from './parts/index.ts';
 export interface Project {
   version: 1;
   parts: { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }[];
-  wires: { from: string; to: string; color?: string }[];
+  wires: { from: string; to: string; color?: string; points?: [number, number][] }[];
   boards: { part: string; firmware: string }[];
 }
 
@@ -33,6 +33,15 @@ export const partAttrs: Record<string, string[]> = Object.fromEntries(Object.ent
 const ATTR_VALUE = /^[\w#.-]{0,32}$/;
 export const ID = /^[A-Za-z_][\w-]{0,63}$/;
 export const COLOR = /^[a-zA-Z#][\w#]{0,31}$/;
+/** The most bend points one wire may have. */
+export const MAX_POINTS = 100;
+
+/** A wire's bend points, kept only where each is a pair of finite numbers. */
+export function cleanPoints(raw: unknown): [number, number][] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((q): q is [number, number] => Array.isArray(q) && q.length === 2 && q.every((n) => typeof n === 'number' && Number.isFinite(n)))
+    .slice(0, MAX_POINTS).map(([x, y]) => [Math.round(x), Math.round(y)]);
+}
 
 /**
  * Check and clean anything claiming to be a project. Every project enters
@@ -64,7 +73,8 @@ export function parseProject(raw: unknown, source: string): Project {
   });
   const wires = (r.wires as any[]).map((w, n) => {
     if (!w || typeof w !== 'object' || typeof w.from !== 'string' || typeof w.to !== 'string' || w.from.length > 160 || w.to.length > 160) fail(`wire ${n + 1} needs "from" and "to" as part:pin text`);
-    return { from: w.from as string, to: w.to as string, ...(typeof w.color === 'string' && COLOR.test(w.color) ? { color: w.color as string } : {}) };
+    const points = cleanPoints(w.points);
+    return { from: w.from as string, to: w.to as string, ...(typeof w.color === 'string' && COLOR.test(w.color) ? { color: w.color as string } : {}), ...(points.length ? { points } : {}) };
   });
   const boards = (r.boards as any[]).map((b, n) => {
     if (!b || typeof b !== 'object' || typeof b.part !== 'string' || !seen.has(b.part)) fail(`board ${n + 1} does not name a part in this project`);
