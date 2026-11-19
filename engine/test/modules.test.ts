@@ -197,3 +197,33 @@ test('ILI9341: Adafruit_ILI9341 fills, draws in every rotation, and answers its 
   assert.equal(at(0, 319), 0xffe0, 'rotation 3 starts at the bottom left');
   console.log(`ILI9341 test: 1.5 s simulated in ${wall} ms`);
 });
+
+test('microSD: the SD library reads a file the card starts with, writes and appends a new one, and lists them', async () => {
+  const s = await fw(`#include <SPI.h>
+    #include <SD.h>
+    void setup() { Serial.begin(115200);
+      if (!SD.begin(4)) { Serial.println("no card"); return; }
+      File f = SD.open("hello.txt"); while (f.available()) Serial.write(f.read()); f.close(); Serial.println();
+      f = SD.open("log.txt", FILE_WRITE); for (int i = 0; i < 100; i++) f.println(i); f.close();
+      f = SD.open("log.txt", FILE_WRITE); f.print("end"); f.close();
+      f = SD.open("log.txt"); Serial.println(f.size()); f.seek(382); while (f.available()) Serial.write(f.read()); f.close(); Serial.println();
+      Serial.println(SD.exists("log.txt")); SD.remove("hello.txt"); Serial.println(SD.exists("hello.txt"));
+      Sd2Card card; card.init(SPI_HALF_SPEED, 4); Serial.println(card.type()); Serial.println(card.cardSize()); }
+    void loop() {}`,
+    [{ id: 'sd', type: 'microsd', attrs: { files: '{"HELLO.TXT":"Hi from the card"}' } }],
+    [...power('sd'), ['sd:CS', 'u:4'], ['sd:DI', 'u:11'], ['sd:DO', 'u:12'], ['sd:SCK', 'u:13']]);
+  s.run(1200);
+  // 0..9 are 3 bytes each with CRLF, 10..99 are 4: 30 + 360 = 390, then "end".
+  assert.deepEqual(s.lines(), ['Hi from the card', '393', '98', '99', 'end', '1', '0', '3', '5120'].join('\n').split(/\r?\n/).filter(Boolean));
+  assert.equal(s.show('sd').files, 'LOG.TXT (393 bytes)');
+});
+
+test('microSD: with the card taken out SD.begin fails', async () => {
+  const s = await fw(`#include <SD.h>
+    void setup() { Serial.begin(115200); Serial.println(SD.begin(4) ? "card" : "no card"); }
+    void loop() {}`,
+    [{ id: 'sd', type: 'microsd' }], [...power('sd'), ['sd:CS', 'u:4'], ['sd:DI', 'u:11'], ['sd:DO', 'u:12'], ['sd:SCK', 'u:13']]);
+  s.control('sd', 'inserted', 0);
+  s.run(3000);
+  assert.deepEqual(s.lines(), ['no card']);
+});
