@@ -6,6 +6,7 @@ import type { Device, OutputValue, PartCtx, PartDef } from './part.ts';
 import { boardPins, canonicalPin, isBoard, type Project } from './project.ts';
 
 export type Outputs = Record<string, Record<string, OutputValue>>;
+export interface Picture { project: Project; links: Link[]; drives: Drive[]; analog: { node: string; volts: number }[]; controls: Record<string, Record<string, number>>; outputs: Outputs; boards: Record<string, { pin: string; level: 0 | 1 | null; pull?: 'up' | 'down' }[]> }
 interface CircuitState { parts: string; controls: Record<string, Record<string, number>>; outputs: Outputs; contended: string[]; devices: Record<string, unknown>; seen: string[] }
 
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
@@ -219,6 +220,13 @@ export class Circuit implements Stateful {
         this.checkParts();
       } while (this.again);
     } finally { this.busy = false; }
+  }
+
+  /** Everything connected and driven right now, for the electrical layer (engine/src/electrical). */
+  picture(): Picture {
+    const g = this.gather();
+    return { project: this.project, links: g.links, drives: g.drives, analog: g.analog, controls: this.controls, outputs: this.last,
+      boards: Object.fromEntries(Object.entries(this.backends).map(([id, b]) => [id, b.drives()])) };
   }
 
   /** Everything the parts contribute, as they stand with the levels last resolved. */

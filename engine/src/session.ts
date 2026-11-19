@@ -12,6 +12,7 @@ import { buildUno, NO_SKETCH } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates } from './templates.ts';
+import { Electrical, Spice, type Report } from './electrical/index.ts';
 
 export type InMsg =
   | { t: 'hello' }
@@ -39,10 +40,12 @@ export type OutMsg =
   | { t: 'serial'; text: string }
   | { t: 'problems'; items: string[] }
   | { t: 'dirty'; dirty: boolean }
+  /** Voltages and currents from the circuit solver: per wire (in project order) and a status per part. */
+  | { t: 'electrical'; state: Report['state']; reason?: string; wires: Report['wires']; parts: Report['parts'] }
   | { t: 'error'; message: string };
 
 type Build = (dir: string) => Promise<{ ok: boolean; log: string; hex?: string }>;
-interface Run { engine: Engine; uno: UnoBackend; circuit: Circuit; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
+interface Run { engine: Engine; uno: UnoBackend; circuit: Circuit; electrical: Electrical; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
 
 const MS = 1e6;
 const MAX_STEP_MS = 50;           // a stalled host must not make the simulation leap ahead
@@ -65,6 +68,8 @@ export class Session {
   private starting = false;
   private startId = 0;              // bumped by anything that should cancel a start in progress
   private lastWarnings: string[] = [];   // what the last run found, kept on show until the circuit changes or runs again
+  private spice: Spice | null = null;   // one solver process for the whole session, started on the first run
+  private ngspice: string | null | undefined;
   private loadError = '';           // why the project file could not be read, if it could not
   private disposed = false;
 
@@ -74,8 +79,13 @@ export class Session {
   private watcher: fs.FSWatcher | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
 
-  /** `watch`: upload again whenever the sketch is saved during a run. */
-  constructor(opts: { build?: Build; watch?: boolean } = {}) { this.build = opts.build ?? ((d) => buildUno(d)); this.watching = opts.watch ?? false; }
+  /**
+   * `watch`: upload again whenever the sketch is saved during a run.
+   * `ngspice`: the circuit solver's path (default $SHIBO_NGSPICE, else ngspice on the PATH); without it parts show unchecked.
+   */
+  constructor(opts: { build?: Build; watch?: boolean; ngspice?: string | null } = {}) {
+    this.build = opts.build ?? ((d) => buildUno(d)); this.watching = opts.watch ?? false; this.ngspice = opts.ngspice;
+  }
 
   onMessage(cb: (m: OutMsg) => void): void { this.listeners.push(cb); }
   private send(m: OutMsg): void { if (!this.disposed) for (const cb of this.listeners) cb(m); }
@@ -109,7 +119,14 @@ export class Session {
   }
 
   /** Send everything a page needs to draw itself (used when a page connects). */
-  hello(): void { this.sendProject(); this.sendStatus(); if (this.run) this.send({ t: 'outputs', outputs: this.run.circuit.display() }); }
+  hello(): void {
+    this.sendProject(); this.sendStatus();
+    if (this.run) this.send({ t: 'outputs', outputs: this.run.circuit.display() });
+    const r = this.run?.electrical.report();
+    if (r) this.sendElectrical(r);
+  }
+
+  private sendElectrical(r: Report): void { this.send({ t: 'electrical', state: r.state, ...(r.reason ? { reason: r.reason } : {}), wires: r.wires, parts: r.parts }); }
 
   private open(dir: string): void {
     this.stop();
@@ -147,7 +164,7 @@ export class Session {
     for (const [id, o] of Object.entries(this.run?.circuit.outputs() ?? {})) {
       if (o.powered === false) items.push(`${id} has no power: wire its supply pin to 5V and its GND pin to GND`);
     }
-    items.push(...(this.run ? this.run.circuit.warnings() : this.lastWarnings));
+    items.push(...(this.run ? [...this.run.circuit.warnings(), ...this.run.electrical.warnings()] : this.lastWarnings));
     for (const n of this.run?.circuit.contended() ?? []) items.push(`Short circuit at ${n}: two outputs are driving the same wire to different levels`);
     return items;
   }
@@ -198,9 +215,12 @@ export class Session {
       const uno = new UnoBackend(board.part, built.hex);
       engine.addBackend(uno);
       const circuit = new Circuit(engine, project, { [board.part]: uno });
-      const run: Run = { engine, uno, circuit, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
+      this.spice ??= new Spice(this.ngspice);
+      const electrical = new Electrical({ spice: this.spice });
+      const run: Run = { engine, uno, circuit, electrical, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
       uno.onSerial((b) => { run.serial += String.fromCharCode(b); });
       this.run = run;
+      electrical.onReport((r) => { if (this.run === run) { this.sendElectrical(r); this.flush(); } });
     } finally {
       // Whatever happened, the page must not be left showing "building".
       this.starting = false;
@@ -214,7 +234,8 @@ export class Session {
     if (!this.run) return;
     const timeMs = this.run.engine.now / MS;
     this.flush();
-    this.lastWarnings = [...this.run.circuit.warnings()];
+    this.lastWarnings = [...this.run.circuit.warnings(), ...this.run.electrical.warnings()];
+    this.run.electrical.close();
     this.run = null;
     this.send({ t: 'status', state: 'idle', timeMs });
     this.send({ t: 'problems', items: this.problems() });
@@ -242,6 +263,7 @@ export class Session {
     const run = this.run;
     if (!run) return;
     if (run.serial) { this.send({ t: 'serial', text: run.serial }); run.serial = ''; }
+    run.electrical.update(run.circuit.picture());           // solved in the background; the answer comes back as its own message
     const outputs = run.circuit.display(), key = JSON.stringify(outputs);
     if (key !== run.lastOutputs) { run.lastOutputs = key; this.send({ t: 'outputs', outputs }); }
     const problems = this.problems(), pkey = problems.join('\n');
@@ -319,7 +341,9 @@ export class Session {
   }
 
   dispose(): void {
+    this.run?.electrical.close();
     this.run = null; this.disposed = true; this.listeners = [];
+    this.spice?.close(); this.spice = null;
     this.watcher?.close(); this.watcher = null;
     if (this.saveTimer) clearTimeout(this.saveTimer);
   }
