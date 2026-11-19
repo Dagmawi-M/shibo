@@ -17,13 +17,13 @@
 ## Parts
 
 - **Boards:** Arduino Uno, Arduino Nano.
-- **Lights and sound:** LED, RGB LED, LED bar graph, 7-segment display, Buzzer.
+- **Lights and sound:** LED (red, green, blue, yellow, white, orange, pink, purple; 3, 5 and 10 mm), LED with built-in resistor, Infrared LED, Bi-colour LED, RGB LED (common cathode and common anode), Traffic-light module, Laser module (KY-008), LED bar graph, 7-segment display, Buzzer.
 - **Basics:** Resistor.
 - **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
 - **Motors and switching:** Relay, Servo motor, Stepper motor, Two-hand stepper (clock).
 - **Sensors:** Light sensor (LDR), Temperature sensor (NTC), Gas sensor, Flame sensor, Sound sensor (large), Sound sensor (small), Motion sensor (PIR), Tilt switch, Heartbeat sensor, Ultrasonic distance (HC-SR04), Temperature and humidity (DHT22), Infrared receiver, Load cell amplifier (HX711), Accelerometer and gyro (MPU6050).
 - **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307).
-- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix.
+- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, NeoPixel strip (WS2812, chainable DOUT to DIN), LED matrix 8x8 (MAX7219, chainable, works with LedControl), 4-digit display (TM1637, works with TM1637Display).
 
 Boards so far: Arduino Uno and Nano. ESP32, Mega and Raspberry Pi Pico are planned.
 
@@ -80,7 +80,8 @@ Tests run with Node's built-in runner, and Node 23 or newer is needed because th
 
 - Its checks are wiring rules, not a full voltage and current calculation.
 - Wires take a simple path and cannot be bent by hand.
-- The LCD model ignores custom characters and scrolling; NeoPixel strips cannot be chained.
+- The LCD model ignores custom characters and scrolling.
+- The MAX7219 shows its digit registers as matrix rows; its BCD decode mode for 7-segment digits is not drawn. An IR LED does not reach the infrared receiver.
 
 ## Credits and licence
 
