@@ -8,6 +8,7 @@ import { connect } from './transport.ts';
 import './drawings/index.ts';
 import { meterText, type ElectricalMsg } from './meter.ts';
 import { mountInstruments } from './instruments/index.ts';
+import { mountCatalog } from './catalog.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string }
@@ -50,7 +51,6 @@ document.getElementById('app')!.innerHTML = `
 <div class="main">
   <aside class="palette">
     <h2>Parts</h2>
-    <input id="find" type="search" placeholder="Find a part" aria-label="Find a part">
     <div id="palette"></div>
     <h2>In this circuit</h2>
     <ul id="inventory"></ul>
@@ -74,7 +74,7 @@ document.getElementById('app')!.innerHTML = `
 // can stand in for them later.
 const own: Record<string, HTMLElement> = {};
 for (const id of ['run', 'stop', 'save', 'undo', 'redo', 'sketch', 'where', 'status', 'palette', 'inventory', 'stage', 'sizer', 'hint', 'canvas', 'serial',
-  'serial-in', 'problems', 'find', 'controls', 'tip', 'menu', 'zoom-in', 'zoom-out', 'zoom-level', 'fit', 'guide', 'panels', 'welcome', 'clear', 'props']) own[id] = document.getElementById(id)!;
+  'serial-in', 'problems', 'controls', 'tip', 'menu', 'zoom-in', 'zoom-out', 'zoom-level', 'fit', 'guide', 'panels', 'welcome', 'clear', 'props']) own[id] = document.getElementById(id)!;
 const $ = <T extends HTMLElement>(id: string) => own[id] as T;
 const canvas = $('canvas'), stage = $('stage'), wiresSvg = document.getElementById('wires') as unknown as SVGSVGElement;
 
@@ -131,7 +131,7 @@ link.onMessage((m) => {
       if (selected?.kind === 'part' && !project.parts.some((p) => p.id === (selected as { id: string }).id)) selected = null;
       if (selected?.kind === 'wire' && selected.index >= project.wires.length) selected = null;
       lastError = '';
-      drawPalette(); void render(); drawBar(); drawProblems(); drawControls(); drawInventory(); drawWelcome(); drawProps(true);
+      palette.update(catalog); void render(); drawBar(); drawProblems(); drawControls(); drawInventory(); drawWelcome(); drawProps(true);
       break;
     case 'status': {
       const was = state; state = m.state; timeMs = m.timeMs;
@@ -217,57 +217,13 @@ function drawProblems(): void {
 }
 
 // ---------- catalog ----------
-let paletteFor = '';
-function drawPalette(): void {
-  const box = $('palette'), key = catalog.map((c) => c.type).join(',');
-  if (key === paletteFor) return;
-  paletteFor = key;
-  const groups = new Map<string, CatalogEntry[]>();
-  for (const c of catalog) groups.set(c.group, [...(groups.get(c.group) ?? []), c]);
-  box.replaceChildren(...[...groups].map(([name, items]) => {
-    const d = document.createElement('details'); d.open = true;
-    const sum = document.createElement('summary'); sum.textContent = `${name} (${items.length})`;
-    d.append(sum, ...items.map((c) => {
-      const b = document.createElement('button');
-      b.className = 'card'; b.draggable = true; b.dataset.type = c.type; b.title = `Add ${c.label}: drag it onto the canvas, or click`;
-      const thumb = document.createElement('span'); thumb.className = 'thumb';
-      const label = document.createElement('span'); label.className = 'name'; label.textContent = c.label;
-      b.append(thumb, label);
-      // A small live picture of the part. It is only a picture: it takes no clicks.
-      if (customElements.get(c.tag)) {
-        const pic = document.createElement(c.tag) as PartEl;
-        thumb.append(pic);
-        void (pic.updateComplete ?? Promise.resolve()).then(() => {
-          // Some drawings size their host oddly; the picture inside is what counts.
-          const box = (pic.shadowRoot?.querySelector('svg') ?? pic).getBoundingClientRect();
-          const w = Math.max(box.width, pic.offsetWidth, 1), h = Math.max(box.height, pic.offsetHeight, 1), k = Math.min(48 / w, 34 / h, 1);
-          pic.style.width = `${w}px`; pic.style.height = `${h}px`;
-          pic.style.transform = `scale(${k})`; thumb.style.width = `${Math.ceil(w * k)}px`; thumb.style.height = `${Math.ceil(h * k)}px`;
-        });
-      }
-      b.addEventListener('dragstart', (e) => { e.dataTransfer!.setData(PART_MIME, c.type); e.dataTransfer!.effectAllowed = 'copy'; });
-      b.addEventListener('click', () => {
-        // Clicked rather than dragged: put it in the free space to the right of what is already there.
-        let right = 0, top = Infinity;
-        for (const el of Object.values(els)) { right = Math.max(right, el.offsetLeft + el.offsetWidth); top = Math.min(top, el.offsetTop); }
-        edit('addPart', c.type, Math.round((right ? right + 40 : 60) - ox), Math.round((Number.isFinite(top) ? top : 60) - oy));
-      });
-      return b;
-    }));
-    return d;
-  }));
-  filterPalette();
-}
-function filterPalette(): void {
-  const q = ($('find') as HTMLInputElement).value.trim().toLowerCase();
-  for (const d of $('palette').querySelectorAll('details')) {
-    let any = false;
-    for (const b of d.querySelectorAll('button')) { const hit = !q || b.textContent!.toLowerCase().includes(q); b.hidden = !hit; any ||= hit; }
-    (d as HTMLElement).hidden = !any;
-    if (q) d.open = true;
-  }
-}
-$('find').addEventListener('input', filterPalette);
+// The catalogue itself lives in catalog.ts; it calls back here to add a clicked part.
+const palette = mountCatalog({ box: $('palette'), mime: PART_MIME, add(type) {
+  // Clicked rather than dragged: put it in the free space to the right of what is already there.
+  let right = 0, top = Infinity;
+  for (const el of Object.values(els)) { right = Math.max(right, el.offsetLeft + el.offsetWidth); top = Math.min(top, el.offsetTop); }
+  edit('addPart', type, Math.round((right ? right + 40 : 60) - ox), Math.round((Number.isFinite(top) ? top : 60) - oy));
+} });
 
 /** The components in the circuit, to select or remove without hunting on the canvas. */
 function drawInventory(): void {
