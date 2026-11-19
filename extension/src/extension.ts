@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { Session, type InMsg } from '../../engine/src/session.ts';
-import { buildUno } from '../../engine/src/build.ts';
+import { buildSketch } from '../../engine/src/build.ts';
 import { createProject, folderName, templates } from '../../engine/src/templates.ts';
 
 const TICK_MS = 16;
@@ -74,7 +74,7 @@ function open(context: vscode.ExtensionContext, dir: string): void {
   panels.set(dir, panel);
 
   const cache = path.join(context.globalStorageUri.fsPath, 'build');
-  const session = new Session({ build: (d) => buildUno(d, cache), watch: true });
+  const session = new Session({ build: (d, b) => buildSketch(d, b, cache), watch: true });
   const title = panel.title;
   let dirty = false;
   session.onMessage((m) => {

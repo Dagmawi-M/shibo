@@ -5,10 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Engine } from './engine.ts';
 import { Circuit } from './circuit.ts';
-import { UnoBackend } from './backends/avr.ts';
+import { createBackend, runnableBoards } from './backends/index.ts';
+import type { ChipBackend } from './types.ts';
 import { importWokwi, parseProject, validate, type Project } from './project.ts';
 import * as edit from './edit.ts';
-import { buildUno, NO_SKETCH } from './build.ts';
+import { buildSketch, NO_SKETCH } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates } from './templates.ts';
@@ -41,8 +42,9 @@ export type OutMsg =
   | { t: 'dirty'; dirty: boolean }
   | { t: 'error'; message: string };
 
-type Build = (dir: string) => Promise<{ ok: boolean; log: string; hex?: string }>;
-interface Run { engine: Engine; uno: UnoBackend; circuit: Circuit; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
+/** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
+type Build = (dir: string, board: string) => Promise<{ ok: boolean; log: string; hex?: string }>;
+interface Run { engine: Engine; chip: ChipBackend; circuit: Circuit; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
 
 const MS = 1e6;
 const MAX_STEP_MS = 50;           // a stalled host must not make the simulation leap ahead
@@ -75,7 +77,7 @@ export class Session {
   private saveTimer: NodeJS.Timeout | null = null;
 
   /** `watch`: upload again whenever the sketch is saved during a run. */
-  constructor(opts: { build?: Build; watch?: boolean } = {}) { this.build = opts.build ?? ((d) => buildUno(d)); this.watching = opts.watch ?? false; }
+  constructor(opts: { build?: Build; watch?: boolean } = {}) { this.build = opts.build ?? ((d, b) => buildSketch(d, b)); this.watching = opts.watch ?? false; }
 
   onMessage(cb: (m: OutMsg) => void): void { this.listeners.push(cb); }
   private send(m: OutMsg): void { if (!this.disposed) for (const cb of this.listeners) cb(m); }
@@ -100,7 +102,7 @@ export class Session {
           if (typeof m.text !== 'string') throw new Error('serial text must be text');
           const bytes = new TextEncoder().encode(m.text);
           if (bytes.length > MAX_SERIAL) throw new Error(`that is too long to send at once (${bytes.length} bytes; the limit is ${MAX_SERIAL})`);
-          if (this.run) for (const b of bytes) this.run.uno.serialWrite(b);
+          if (this.run) for (const b of bytes) this.run.chip.serialWrite(b);
           break;
         }
         default: throw new Error(`unknown message ${(m as { t: string }).t}`);
@@ -184,22 +186,24 @@ export class Session {
     const bad = validate(this.project);
     if (bad.length) throw new Error(`fix the wiring first: ${bad[0]}`);
     const board = this.project.boards[0];
-    if (!board) throw new Error('add a board to the circuit first (only the Arduino Uno runs so far)');
+    if (!board) throw new Error('add a board to the circuit first');
+    const type = this.project.parts.find((p) => p.id === board.part)!.type;
+    if (!runnableBoards.includes(type)) throw new Error(`${board.part} cannot run yet: Shibo runs ${runnableBoards.join(', ')} boards so far`);
     if (this.loadError) throw new Error(this.loadError);
     this.lastWarnings = [];
     const project = this.project, id = ++this.startId;
     this.starting = true; this.sendStatus('building');
     try {
-      const built = await this.build(this.dir);
+      const built = await this.build(this.dir, type);
       if (this.disposed) return;
       if (id !== this.startId || project !== this.project) return;        // stopped or edited while building
       if (!built.ok || !built.hex) throw new Error(built.log === NO_SKETCH ? NO_SKETCH : `the sketch did not build:\n${built.log}`);
       const engine = new Engine();
-      const uno = new UnoBackend(board.part, built.hex);
-      engine.addBackend(uno);
-      const circuit = new Circuit(engine, project, { [board.part]: uno });
-      const run: Run = { engine, uno, circuit, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
-      uno.onSerial((b) => { run.serial += String.fromCharCode(b); });
+      const chip = createBackend(type, board.part, built.hex);
+      engine.addBackend(chip);
+      const circuit = new Circuit(engine, project, { [board.part]: chip });
+      const run: Run = { engine, chip, circuit, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
+      chip.onSerial((b) => { run.serial += String.fromCharCode(b); });
       this.run = run;
     } finally {
       // Whatever happened, the page must not be left showing "building".

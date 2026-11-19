@@ -5,7 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type InMsg, type OutMsg } from '../engine/src/session.ts';
-import { buildUno } from '../engine/src/build.ts';
+import { buildSketch } from '../engine/src/build.ts';
 
 const HOST = '127.0.0.1';
 const TICK_MS = 16;
@@ -17,7 +17,7 @@ export interface Server { host: string; port: number; running(): boolean; close(
 
 export function startServer(opts: { dir: string; port: number; build?: (dir: string) => Promise<{ ok: boolean; log: string; hex?: string }>; appDir?: string }): Promise<Server> {
   const appDir = opts.appDir ?? path.resolve(import.meta.dirname, '..', 'dist', 'app');
-  const session = new Session({ build: opts.build ?? ((d) => buildUno(d)), watch: true });
+  const session = new Session({ build: opts.build ?? ((d, b) => buildSketch(d, b)), watch: true });
   const clients = new Set<http.ServerResponse>();
   let state = 'idle';
   let timer: NodeJS.Timeout | null = null, last = 0;
