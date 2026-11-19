@@ -1,0 +1,155 @@
+{
+  "name": "shibo",
+  "displayName": "Shibo",
+  "description": "Simulate Arduino circuits offline: drag parts, wire them, and run your real sketch before you buy anything.",
+  "version": "0.1.0",
+  "publisher": "shibo",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Education",
+    "Testing"
+  ],
+  "keywords": [
+    "arduino",
+    "simulator",
+    "circuit",
+    "embedded",
+    "electronics",
+    "uno",
+    "breadboard",
+    "iot",
+    "maker",
+    "wiring"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "shibo.open",
+        "title": "Open Simulator",
+        "category": "Shibo",
+        "icon": "$(circuit-board)"
+      },
+      {
+        "command": "shibo.newProject",
+        "title": "New Project",
+        "category": "Shibo",
+        "icon": "$(add)"
+      },
+      {
+        "command": "shibo.getArduinoCli",
+        "title": "How to Install arduino-cli",
+        "category": "Shibo"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "shibo",
+          "title": "Shibo",
+          "icon": "images/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "shibo": [
+        {
+          "id": "shibo.home",
+          "name": "Circuit simulator"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "shibo.home",
+        "contents": "Build a circuit, wire it, and run your real Arduino sketch. Nothing leaves your computer.\n[New Project](command:shibo.newProject)\n[Open Simulator for This Folder](command:shibo.open)\n[Open a Folder](command:vscode.openFolder)\nNew here? [Take the 2-minute tour](command:workbench.action.openWalkthrough?%22shibo.shibo%23shibo.start%22).\nSketches are compiled with arduino-cli. [How to install it](command:shibo.getArduinoCli)."
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "shibo.open",
+          "when": "resourceExtname == .ino",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "shibo.newProject",
+          "when": "view == shibo.home",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "shibo.open",
+          "when": "resourceExtname == .ino || resourceFilename == shibo.json",
+          "group": "navigation"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "shibo.start",
+        "title": "Get started with Shibo",
+        "description": "From nothing to a blinking LED in two minutes.",
+        "steps": [
+          {
+            "id": "new",
+            "title": "Create a project",
+            "description": "Pick a name and a starting circuit. Shibo makes the folder, the sketch and the wiring.\n[New Project](command:shibo.newProject)",
+            "media": {
+              "markdown": "media/tour-new.md"
+            },
+            "completionEvents": [
+              "onCommand:shibo.newProject"
+            ]
+          },
+          {
+            "id": "run",
+            "title": "Run it",
+            "description": "The simulator opens beside your sketch. Press **Run**, then click the parts: buttons press, knobs turn, sensors have sliders.\n[Open Simulator](command:shibo.open)",
+            "media": {
+              "markdown": "media/tour-run.md"
+            },
+            "completionEvents": [
+              "onCommand:shibo.open"
+            ]
+          },
+          {
+            "id": "build",
+            "title": "Change the circuit",
+            "description": "Drag parts from the list, click one pin then another to wire them, and press Delete to remove what is selected. Edit the sketch as usual and press Run again.",
+            "media": {
+              "markdown": "media/tour-build.md"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#14784f",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "workspaceContains:shibo.json",
+    "workspaceContains:*.ino",
+    "workspaceContains:diagram.json",
+    "onStartupFinished"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dagmawi-M/shibo.git"
+  },
+  "homepage": "https://github.com/Dagmawi-M/shibo#readme",
+  "bugs": {
+    "url": "https://github.com/Dagmawi-M/shibo/issues"
+  }
+}

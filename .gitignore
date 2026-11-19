@@ -1,0 +1,12 @@
+node_modules/
+spikes/tools/
+spikes/a/
+spikes/c/*/build/
+.build/
+.superpowers/
+dist/
+extension/dist/
+*.vsix
+# Kept on the author's machine only
+docs/
+spikes/

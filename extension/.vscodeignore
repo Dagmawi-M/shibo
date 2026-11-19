@@ -1,0 +1,4 @@
+src/**
+**/*.map
+images/icon.svg
+images/screenshot.png

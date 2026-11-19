@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="24" fill="#14784f"/>
+  <!-- a chip on a bench, one pin wired to a lit LED -->
+  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="30" y="52" width="46" height="46" rx="6"/>
+    <path d="M42 52V40M53 52V40M64 52V40M42 98v12M53 98v12M64 98v12M30 64H18M30 75H18M30 86H18"/>
+    <path d="M76 75h14a8 8 0 0 0 8-8V52"/>
+  </g>
+  <circle cx="98" cy="36" r="14" fill="#ffd166"/>
+  <g stroke="#ffd166" stroke-width="5" stroke-linecap="round"><path d="M98 10v6M120 36h-4M114 20l-4 4M82 20l4 4"/></g>
+</svg>
