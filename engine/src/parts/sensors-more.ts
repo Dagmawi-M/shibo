@@ -3,5 +3,6 @@
 import type { PartDef } from '../part.ts';
 import { sensorsAnalog } from './sensors-analog.ts';
 import { sensorsI2C } from './sensors-i2c.ts';
+import { sensorsTimed } from './sensors-timed.ts';
 
-export const sensorsMore: PartDef[] = [...sensorsAnalog, ...sensorsI2C];
+export const sensorsMore: PartDef[] = [...sensorsAnalog, ...sensorsI2C, ...sensorsTimed];
