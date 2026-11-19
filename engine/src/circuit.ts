@@ -1,5 +1,5 @@
 import type { Engine } from './engine.ts';
-import type { ChipBackend, I2CHandler, Stateful } from './types.ts';
+import type { ChipBackend, I2CHandler, Level, Stateful } from './types.ts';
 import { resolve, type Link, type Drive } from './nets.ts';
 import { library } from './parts/index.ts';
 import type { Device, OutputValue, PartCtx, PartDef } from './part.ts';
@@ -29,6 +29,8 @@ export class Circuit implements Stateful {
   private seen: string[] = [];        // wiring mistakes noticed so far in this run; they stay listed
   private busy = false;
   private again = false;
+  private lastAnalog: { node: string; volts: number }[] = [];
+  private settleCbs: (() => void)[] = [];
 
   constructor(engine: Engine, project: Project, backends: Record<string, ChipBackend>, lib: Record<string, PartDef> = library) {
     this.engine = engine; this.project = project; this.backends = backends; this.lib = lib;
@@ -96,6 +98,18 @@ export class Circuit implements Stateful {
   }
 
   outputs(): Outputs { return this.last; }
+
+  // ---- for instruments (probes, logic analyzer): read-only views of the resolved circuit ----
+  /** Called after every resolve, with the engine's exact time available. */
+  onSettle(cb: () => void): void { this.settleCbs.push(cb); }
+  /** The logic level on the net a part:pin node is on. */
+  levelAt(ref: string): Level { return this.nets.level(this.node(ref)); }
+  /** Whether two part:pin nodes are on the same net. */
+  sameNet(a: string, b: string): boolean { return this.nets.net(this.node(a)) === this.nets.net(this.node(b)); }
+  /** The voltage a part puts on this node's net, if one does. */
+  voltsAt(ref: string): number | null { const n = this.nets.net(this.node(ref)); return this.lastAnalog.find((a) => this.nets.net(this.node(a.node)) === n)?.volts ?? null; }
+  /** Every control's current value, by part. */
+  controlValues(): Record<string, Record<string, number>> { return structuredClone(this.controls); }
   contended(): string[] { return this.lastContended; }
 
   /** Wiring mistakes noticed so far, as sentences. */
@@ -236,10 +250,11 @@ export class Circuit implements Stateful {
           }
           for (const n of nets.contended) if (!this.lastContended.includes(n)) this.engine.record(CONTENDED(n));
         }
-        this.last = out; this.lastContended = nets.contended;
+        this.last = out; this.lastContended = nets.contended; this.lastAnalog = g.analog;
         this.checkParts();
       } while (this.again);
     } finally { this.busy = false; }
+    for (const cb of this.settleCbs) cb();
   }
 
   /** Everything connected and driven right now, for the electrical layer (engine/src/electrical). */
