@@ -12,3 +12,5 @@ breakout('shibo-hc05', { title: 'HC-05 Bluetooth', pins: ['STATE', 'RXD', 'TXD',
   art: '<rect x="12" y="16" width="46" height="50" rx="1" fill="#2a7fd4" stroke="#0003"/><path d="M18 22 h10 v6 h-6 v6 h6 v6" stroke="#d8b04a" fill="none" stroke-width="1.5"/><rect x="24" y="44" width="22" height="16" fill="#222"/>' });
 breakout('shibo-gps-neo6m', { title: 'GPS NEO-6M', pins: ['VCC', 'RX', 'TX', 'GND'], color: '#1d6b3a', width: 80, height: 84,
   art: '<rect x="14" y="16" width="34" height="34" rx="2" fill="#c9a24a" stroke="#8a6d2a"/><rect x="20" y="22" width="22" height="22" fill="#e9d9a8"/><rect x="54" y="22" width="16" height="16" fill="#ddd" stroke="#888"/><text x="62" y="32" font-size="4" text-anchor="middle" fill="#333">u-blox</text>' });
+breakout('shibo-rc522', { title: 'RFID-RC522', pins: ['SDA', 'SCK', 'MOSI', 'MISO', 'IRQ', 'GND', 'RST', '3.3V'], color: '#1b4fa0', width: 96, height: 110,
+  art: '<rect x="12" y="18" width="72" height="56" rx="4" fill="none" stroke="#d8b04a" stroke-width="2"/><rect x="18" y="24" width="60" height="44" rx="3" fill="none" stroke="#d8b04a" stroke-width="2"/><rect x="38" y="78" width="20" height="14" fill="#222"/>' });

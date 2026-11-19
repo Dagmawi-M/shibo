@@ -22,7 +22,7 @@
 - **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
 - **Motors and switching:** Relay, Servo motor, Stepper motor, Two-hand stepper (clock).
 - **Sensors:** Light sensor (LDR), Temperature sensor (NTC), Gas sensor, Flame sensor, Sound sensor (large), Sound sensor (small), Motion sensor (PIR), Tilt switch, Heartbeat sensor, Ultrasonic distance (HC-SR04), Temperature and humidity (DHT22), Infrared receiver, Load cell amplifier (HX711), Accelerometer and gyro (MPU6050).
-- **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307), Real-time clock (DS3231), EEPROM (24C32), I/O expander (PCF8574), Shift register out (74HC595), Shift register in (74HC165), Analog multiplexer (CD4051), microSD card, Bluetooth (HC-05), GPS (NEO-6M).
+- **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307), Real-time clock (DS3231), EEPROM (24C32), I/O expander (PCF8574), Shift register out (74HC595), Shift register in (74HC165), Analog multiplexer (CD4051), microSD card, Bluetooth (HC-05), GPS (NEO-6M), RFID reader (RC522).
 - **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, Colour TFT (ILI9341).
 
 Boards so far: Arduino Uno and Nano. ESP32, Mega and Raspberry Pi Pico are planned.

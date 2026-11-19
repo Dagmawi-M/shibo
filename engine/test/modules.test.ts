@@ -270,3 +270,36 @@ test('GPS NEO-6M: TinyGPSPlus reads the position and height set on the panel', a
   s.run(1300);
   assert.equal(last(s), '-33.8688 151.2093 58 8');
 });
+
+test('RC522: MFRC522 reads the UID of a tapped card, authenticates, writes and reads a block; a wrong key fails', async () => {
+  const s = await fw(`#include <SPI.h>
+    #include <MFRC522.h>
+    MFRC522 rfid(10, 9);
+    MFRC522::MIFARE_Key key;
+    void setup() { Serial.begin(9600); SPI.begin(); rfid.PCD_Init(); for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
+      Serial.println(rfid.PCD_ReadRegister(MFRC522::VersionReg), HEX); }
+    void loop() {
+      if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) return;
+      for (byte i = 0; i < rfid.uid.size; i++) Serial.print(rfid.uid.uidByte[i], HEX);
+      Serial.print(' '); Serial.println(rfid.PICC_GetType(rfid.uid.sak) == MFRC522::PICC_TYPE_MIFARE_1K ? "1K" : "?");
+      byte data[16] = "hello, card!!!!", buf[18], size = sizeof(buf);
+      MFRC522::MIFARE_Key bad = {{1, 2, 3, 4, 5, 6}};
+      Serial.println(rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 7, &bad, &rfid.uid) == MFRC522::STATUS_OK ? "auth" : "noauth");
+      rfid.PCD_StopCrypto1(); rfid.PICC_WakeupA(buf, &size); rfid.PICC_Select(&rfid.uid);
+      Serial.println(rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 7, &key, &rfid.uid) == MFRC522::STATUS_OK ? "auth" : "noauth");
+      Serial.println(rfid.MIFARE_Write(4, data, 16) == MFRC522::STATUS_OK ? "wrote" : "nowrite");
+      size = sizeof(buf);
+      Serial.println(rfid.MIFARE_Read(4, buf, &size) == MFRC522::STATUS_OK ? (char *)buf : "noread");
+      rfid.PICC_HaltA(); rfid.PCD_StopCrypto1();
+    }`,
+    [{ id: 'r', type: 'rc522' }],
+    [['r:3.3V', 'u:3.3V'], ['r:GND', 'u:GND'], ['r:RST', 'u:9'], ['r:SDA', 'u:10'], ['r:SCK', 'u:13'], ['r:MOSI', 'u:11'], ['r:MISO', 'u:12']]);
+  s.run(200);
+  assert.deepEqual(s.lines(), ['92'], 'no card yet');
+  s.control('r', 'present', 1);
+  s.run(400);
+  assert.deepEqual(s.lines(), ['92', 'DEADBEEF 1K', 'noauth', 'auth', 'wrote', 'hello, card!!!!']);
+  s.control('r', 'present', 0); s.control('r', 'card', 2); s.control('r', 'present', 1);
+  s.run(300);
+  assert.equal(s.lines()[6], '12345678 1K');
+});
