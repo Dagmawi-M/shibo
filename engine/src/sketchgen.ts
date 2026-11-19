@@ -1,5 +1,6 @@
 // Writes a starter sketch from a circuit: one named constant per wired pin,
 // the right pinMode for each, and a loop that shows the wiring is alive.
+import { sensorRoles } from './parts/sensors-roles.ts';
 import { canonicalPin, isBoard, type Project } from './project.ts';
 
 type Kind = 'out' | 'in' | 'pullup' | 'analog';
@@ -26,6 +27,7 @@ const ROLES: Record<string, Role[]> = {
   servo: one('PWM', 'out'), 'hc-sr04': [{ pins: ['TRIG'], kind: 'out', suffix: 'TRIG' }, { pins: ['ECHO'], kind: 'in', suffix: 'ECHO' }],
   dht22: one('SDA', 'in'), 'ir-receiver': one('DAT', 'in'), neopixel: one('DIN', 'out'), 'led-ring': one('DIN', 'out'), 'neopixel-matrix': one('DIN', 'out'),
   'stepper-motor': each(['A-', 'A+', 'B+', 'B-'], 'out'),
+  ...sensorRoles,
 };
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
 
