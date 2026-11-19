@@ -1,10 +1,13 @@
 import { library } from './parts/index.ts';
+import { cleanScript, type ScriptStep } from './instruments/envscript.ts';
 
 export interface Project {
   version: 1;
   parts: { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }[];
   wires: { from: string; to: string; color?: string }[];
   boards: { part: string; firmware: string }[];
+  /** Environment script: control changes on a schedule (see instruments/envscript.ts). */
+  script?: ScriptStep[];
 }
 
 /** Pins of each board type the engine can run. */
@@ -70,7 +73,8 @@ export function parseProject(raw: unknown, source: string): Project {
     if (!b || typeof b !== 'object' || typeof b.part !== 'string' || !seen.has(b.part)) fail(`board ${n + 1} does not name a part in this project`);
     return { part: b.part as string, firmware: typeof b.firmware === 'string' ? b.firmware : '' };
   });
-  return { version: 1, parts, wires, boards };
+  const script = cleanScript(r.script, source);
+  return { version: 1, parts, wires, boards, ...(script ? { script } : {}) };
 }
 
 /**

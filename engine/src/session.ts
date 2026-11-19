@@ -12,6 +12,8 @@ import { buildUno, NO_SKETCH } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates } from './templates.ts';
+import { Instruments, INSTRUMENT_MESSAGES, type InstrumentIn, type InstrumentOut } from './instruments/index.ts';
+import { scriptProblems, setScript } from './instruments/envscript.ts';
 
 export type InMsg =
   | { t: 'hello' }
@@ -26,7 +28,8 @@ export type InMsg =
   | { t: 'start' }
   | { t: 'stop' }
   | { t: 'control'; part: string; name: string; value: number }
-  | { t: 'serial'; text: string };
+  | { t: 'serial'; text: string }
+  | InstrumentIn;
 
 import type { Outputs } from './circuit.ts';
 export type { Outputs };
@@ -39,10 +42,11 @@ export type OutMsg =
   | { t: 'serial'; text: string }
   | { t: 'problems'; items: string[] }
   | { t: 'dirty'; dirty: boolean }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string }
+  | InstrumentOut;
 
 type Build = (dir: string) => Promise<{ ok: boolean; log: string; hex?: string }>;
-interface Run { engine: Engine; uno: UnoBackend; circuit: Circuit; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
+interface Run { engine: Engine; uno: UnoBackend; circuit: Circuit; inst: Instruments; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
 
 const MS = 1e6;
 const MAX_STEP_MS = 50;           // a stalled host must not make the simulation leap ahead
@@ -53,6 +57,7 @@ const EDITS = new Map<string, (p: Project, ...a: any[]) => Project>([
   ['movePart', edit.movePart], ['removePart', edit.removePart], ['addWire', edit.addWire],
   ['removeWire', edit.removeWire], ['setAttr', edit.setAttr], ['pruneWires', edit.pruneWires],
   ['rotatePart', edit.rotatePart], ['renamePart', edit.renamePart], ['setWireColor', edit.setWireColor],
+  ['setScript', setScript],
 ]);
 
 export class Session {
@@ -103,7 +108,9 @@ export class Session {
           if (this.run) for (const b of bytes) this.run.uno.serialWrite(b);
           break;
         }
-        default: throw new Error(`unknown message ${(m as { t: string }).t}`);
+        default:
+          if (INSTRUMENT_MESSAGES.has(m.t)) { this.run?.inst.handle(m as InstrumentIn); break; }
+          throw new Error(`unknown message ${(m as { t: string }).t}`);
       }
     } catch (err) { this.send({ t: 'error', message: (err as Error).message }); }
   }
@@ -141,7 +148,7 @@ export class Session {
 
   private problems(): string[] {
     const items = this.loadError ? [this.loadError] : [];
-    items.push(...validate(this.project));
+    items.push(...validate(this.project), ...scriptProblems(this.project), ...(this.run?.inst.problems() ?? []));
     for (const b of this.project.boards.slice(1)) items.push(`${b.part} will not run: only one board runs at a time so far, and ${this.project.boards[0].part} is the one`);
     for (const u of this.unmapped()) items.push(`${u} has no model yet: it is drawn but does nothing`);
     for (const [id, o] of Object.entries(this.run?.circuit.outputs() ?? {})) {
@@ -198,7 +205,11 @@ export class Session {
       const uno = new UnoBackend(board.part, built.hex);
       engine.addBackend(uno);
       const circuit = new Circuit(engine, project, { [board.part]: uno });
-      const run: Run = { engine, uno, circuit, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
+      const inst = new Instruments(engine, circuit, project, (m) => this.send(m), () => {
+        if (this.run) this.run.serial = '';       // a replay while scrubbing prints what was already printed
+        this.flush(); this.sendStatus();
+      });
+      const run: Run = { engine, uno, circuit, inst, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
       uno.onSerial((b) => { run.serial += String.fromCharCode(b); });
       this.run = run;
     } finally {
@@ -223,7 +234,7 @@ export class Session {
   /** The host calls this with the wall time that passed; the engine decides what that means. */
   tick(wallMs: number): void {
     const run = this.run;
-    if (!run || this.disposed || !(wallMs > 0)) return;
+    if (!run || this.disposed || !(wallMs > 0) || run.inst.paused) return;
     try {
       run.engine.runUntil(run.engine.now + Math.round(Math.min(wallMs, MAX_STEP_MS) * MS));
     } catch (err) {
@@ -233,6 +244,7 @@ export class Session {
     }
     run.engine.log.length = 0;         // the live view shows state, not the event log
     run.circuit.audit();
+    run.inst.afterTick();
     this.flush();
     if (run.engine.now / MS - run.lastStatusMs >= 200) { run.lastStatusMs = run.engine.now / MS; this.sendStatus(); }
   }
