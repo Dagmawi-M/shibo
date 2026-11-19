@@ -3,6 +3,7 @@
 // the engine sends back.
 import '@wokwi/elements';
 import { connect } from './transport.ts';
+import { mountInstruments } from './instruments/index.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string }
@@ -106,8 +107,15 @@ const hint = (text: string) => { $('hint').textContent = text; };
 /** A pointer position in canvas coordinates, whatever the zoom. */
 const at = (e: { clientX: number; clientY: number }): [number, number] => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / zoom, (e.clientY - r.top) / zoom]; };
 
+// ---------- instruments: sound, timeline, analyzer, script, pin readings ----------
+const inst = mountInstruments({
+  send: (m) => link.send(m), values, redrawControls: () => drawControls(),
+  project: () => project, controlsOf: (id) => entry(id)?.controls ?? {},
+});
+
 // ---------- messages from the engine ----------
 link.onMessage((m) => {
+  inst.onMessage(m);
   switch (m.t) {
     case 'project':
       if (m.dir !== dir) { dir = m.dir; setOrigin(m.project); selected = null; }

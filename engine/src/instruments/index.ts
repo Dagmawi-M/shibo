@@ -58,6 +58,14 @@ export class Instruments {
     this.sendTimeline();
   }
 
+  /** A page connected mid-run: tell it everything. */
+  hello(): void {
+    this.send({ t: 'signals', list: this.probe.signals() });
+    this.sendTimeline();
+    this.lastTones = ''; this.sendTones();
+    this.send({ t: 'controls', values: this.circuit.controlValues() });
+  }
+
   /** Script steps that failed while running. */
   problems(): string[] { return this.failures; }
 

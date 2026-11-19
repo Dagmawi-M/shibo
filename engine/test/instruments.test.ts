@@ -168,3 +168,20 @@ test('session: pause stops time, seek scrubs back, resume carries on, and the sc
   assert.equal(last('project').project.script, undefined, 'undo takes the script away');
   s.dispose();
 });
+
+test('a page that connects mid-run is told the signals, timeline, tones and control values', async () => {
+  const b = await fw(BLINK, [], []);
+  const project: Project = { version: 1, parts: [{ id: 'u', type: 'uno', x: 0, y: 0 }], wires: [], boards: [] };
+  const sent: InstrumentOut[] = [];
+  const inst = new Instruments(b.engine, b.circuit, project, (m) => sent.push(m));
+  for (let i = 0; i < 4; i++) { b.run(50); inst.afterTick(); }
+  sent.length = 0;
+  inst.hello();
+  assert.deepEqual(new Set(sent.map((m) => m.t)), new Set(['signals', 'timeline', 'tones', 'controls']));
+});
+
+test('the panel text form round-trips through the shared parser', async () => {
+  const { parseScript: p, formatScript: f } = await import('../src/instruments/scripttext.ts');
+  const text = 'at 500ms set ntc1.temperature to 40\nat 2s ramp ntc1.temperature to 60 over 1.5s';
+  assert.equal(f(p(text).steps), text);
+});

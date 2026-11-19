@@ -116,7 +116,7 @@ export class Session {
   }
 
   /** Send everything a page needs to draw itself (used when a page connects). */
-  hello(): void { this.sendProject(); this.sendStatus(); if (this.run) this.send({ t: 'outputs', outputs: this.run.circuit.display() }); }
+  hello(): void { this.sendProject(); this.sendStatus(); if (this.run) { this.send({ t: 'outputs', outputs: this.run.circuit.display() }); this.run.inst.hello(); } }
 
   private open(dir: string): void {
     this.stop();
