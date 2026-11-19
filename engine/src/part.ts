@@ -1,5 +1,6 @@
 import type { Level, Ns } from './types.ts';
 import type { Link } from './nets.ts';
+import type { Electrical } from './electrical/ratings.ts';
 
 export interface ControlDef { kind: 'momentary' | 'toggle' | 'range'; min?: number; max?: number; initial: number; label?: string; unit?: string; step?: number; log?: boolean }
 
@@ -75,6 +76,8 @@ export interface PartDef {
   check?(id: string, see: { level: LevelOf; strong(node: string): boolean; boardPin(node: string): string | null }, state: Record<string, number>): string[];
   /** A switch contact: a board input wired to it floats while the contact is open, unless pulled. */
   contact?: boolean;
+  /** Ratings and the model the electrical checks use (engine/src/electrical); library parts may have theirs in ratings.ts instead. */
+  electrical?: Electrical;
   /** For parts that need memory, timing or a bus. Used instead of the functions above where it provides them. */
   device?(ctx: PartCtx): Device;
 }

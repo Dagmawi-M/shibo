@@ -157,3 +157,4 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--select); ou
   .palette summary, .palette input { display: none; }
   .work { grid-template-rows: 1fr 300px; }
 }
+.canvas .overloaded { filter: drop-shadow(0 0 4px #e8590c); }

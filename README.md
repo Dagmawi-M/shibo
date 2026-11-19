@@ -12,6 +12,7 @@
 - **Runs your real sketch:** the same compiled program that would go on the board, on an emulated ATmega328P or ATmega2560. Save the sketch while it runs and it uploads again.
 - **Behaves like the bench:** press buttons, turn knobs, set what each sensor senses with a slider. Displays show what your sketch draws.
 - **Catches wiring mistakes:** an LED with no resistor, a floating button input, a relay driven straight from a pin, shorted outputs, a sensor with no power.
+- **Checks the electrics** with [ngspice](https://ngspice.sourceforge.io/) while it runs: pin current over 20 mA (40 mA absolute), LED current too high or too low for its resistor, 5 V into a 3.3 V part, and how much each supply rail is asked for. Rest the pointer on a wire to read its voltage and current. Without ngspice (set `SHIBO_NGSPICE` to its path, or put it on the PATH) parts show as unchecked.
 - **Prints a wiring guide:** what to buy and every connection, with a box to tick as you build.
 
 ## Parts
