@@ -20,7 +20,8 @@
 - **Lights and sound:** LED (red, green, blue, yellow, white, orange, pink, purple; 3, 5 and 10 mm), LED with built-in resistor, Infrared LED, Bi-colour LED, RGB LED (common cathode and common anode), Traffic-light module, Laser module (KY-008), LED bar graph, 7-segment display, Buzzer.
 - **Basics:** Resistor.
 - **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
-- **Motors and switching:** Relay, Servo motor, Stepper motor, Two-hand stepper (clock).
+- **Motors and switching:** Relay, Relay module (active low, active high), Servo motor, Stepper motor, Two-hand stepper (clock), Stepper 28BYJ-48 (ULN2003), DC motor, Motor driver (L298N), Motor driver (L9110), Fan (5V), Water pump, Vibration motor, Solenoid.
+- **Power:** Battery (9V), Battery pack (4 x AA), LiPo cell (3.7V), Voltage regulator (LM7805, 5V), Voltage regulator (AMS1117, 3.3V), Power switch, Fuse, Breadboard power module.
 - **Sensors:** Light sensor (LDR), Temperature sensor (NTC), Gas sensor, Flame sensor, Sound sensor (large), Sound sensor (small), Motion sensor (PIR), Tilt switch, Heartbeat sensor, Ultrasonic distance (HC-SR04), Temperature and humidity (DHT22), Infrared receiver, Load cell amplifier (HX711), Accelerometer and gyro (MPU6050).
 - **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307).
 - **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, NeoPixel strip (WS2812, chainable DOUT to DIN), LED matrix 8x8 (MAX7219, chainable, works with LedControl), 4-digit display (TM1637, works with TM1637Display).

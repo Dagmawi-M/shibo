@@ -1,2 +1,3 @@
 // Drawings Shibo makes itself, for parts @wokwi/elements has none of. One import per agent's folder.
 import './lights/index.ts';
+import './actuators/index.ts';
