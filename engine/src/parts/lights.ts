@@ -49,9 +49,15 @@ function lamps(type: string, label: string, lamp: Record<string, string>, common
     type, pins: opts.pins ?? [...names, common], attrs: opts.anodeAttr ? ['common'] : undefined,
     ui: { label, tag: `shibo-${type}`, group: GROUP, show: Object.fromEntries(names.map((p) => [lamp[p], lamp[p]])) },
     links: () => [],
-    check: opts.resistors ? undefined : (id, see) => {
+    check: opts.resistors ? undefined : (id, see, _state, attrs) => {
+      // Only a forward-biased LED carries current: anode high and cathode low. Reversed, nothing flows.
+      const anode = opts.anode ?? attrs.common === 'anode';
       const com = see.level(`${id}:${common}`);
-      return names.some((p) => { const l = see.level(`${id}:${p}`); return l !== null && com !== null && l !== com && see.strong(`${id}:${p}`) && see.strong(`${id}:${common}`); }) ? [NO_RESISTOR(id)] : [];
+      return names.some((p) => {
+        const l = see.level(`${id}:${p}`);
+        const forward = anode ? com === 1 && l === 0 : com === 0 && l === 1;
+        return forward && see.strong(`${id}:${p}`) && see.strong(`${id}:${common}`);
+      }) ? [NO_RESISTOR(id)] : [];
     },
     device(ctx) {
       const anode = opts.anode ?? ctx.attrs.common === 'anode';
@@ -186,7 +192,8 @@ const tm1637: PartDef = {
         }
         s.clk = clk; s.dio = ctx.level('DIO') === 1 ? 1 : 0;
       },
-      drives: () => [{ pin: 'CLK', level: null, pull: 'up' }, { pin: 'DIO', level: s.ack && fed() ? 0 : null, pull: 'up' }],
+      // The pull-ups are on the module, so they only pull when it has power.
+      drives: () => (fed() ? [{ pin: 'CLK', level: null, pull: 'up' as const }, { pin: 'DIO', level: s.ack ? 0 : null, pull: 'up' as const }] : []),
       outputs: () => ({
         digits: [...s.digits], on: fed() && s.on, brightness: s.brightness,
         text: s.digits.map((d, i) => (SEG_CHARS[d & 0x7f] ?? '?') + (i === 1 && d & 0x80 ? ':' : '')).join(''),

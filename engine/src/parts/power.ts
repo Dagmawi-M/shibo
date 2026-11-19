@@ -11,6 +11,8 @@ const battery = (type: string, label: string, volts: number): PartDef => ({
   type, pins: ['+', '-'],
   ui: { label, tag: `shibo-${type}`, group: GROUP },
   links: () => [],
+  // A cell in series (its - on another cell's +) is let off its - by the circuit: see `cell`.
+  cell: true,
   drives: () => [{ pin: '+', level: 1 }, { pin: '-', level: 0 }],
   analog: (id) => [{ node: `${id}:+`, volts }],
   check(id, see) {

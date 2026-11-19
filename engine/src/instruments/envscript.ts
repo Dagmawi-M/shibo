@@ -66,15 +66,17 @@ export function schedule(engine: Engine, circuit: Circuit, steps: ScriptStep[], 
   for (const s of steps) {
     const t0 = s.at * 1e6;
     if (!s.over) { engine.at(Math.max(t0, engine.now), () => apply(s, s.value)); continue; }
-    // A ramp starts from where the control is at its start; every step is placed now, so a rewind replays them all.
-    const from = { v: NaN };
+    // A ramp starts from where the control is at its start. That start value travels with the steps
+    // still queued (they are placed by the first step), so a snapshot's event queue carries it and a
+    // rewind restores it along with everything else.
     const n = Math.max(1, Math.ceil(s.over / RAMP_STEP_MS));
-    for (let i = 0; i <= n; i++) {
-      engine.at(Math.max(t0 + (s.over * 1e6 * i) / n, engine.now), () => {
-        if (i === 0) from.v = circuit.controlValues()[s.part]?.[s.control] ?? s.value;
-        const v = i === n ? s.value : from.v + ((s.value - from.v) * i) / n;
-        apply(s, Number(v.toPrecision(6)));
-      });
-    }
+    const stepAt = (i: number) => Math.max(t0 + (s.over! * 1e6 * i) / n, engine.now);
+    engine.at(stepAt(0), () => {
+      const from = circuit.controlValues()[s.part]?.[s.control] ?? s.value;
+      apply(s, Number(from.toPrecision(6)));
+      for (let i = 1; i <= n; i++) {
+        engine.at(stepAt(i), () => apply(s, i === n ? s.value : Number((from + ((s.value - from) * i) / n).toPrecision(6))));
+      }
+    });
   }
 }

@@ -24,9 +24,10 @@ const rgbLed: PartDef = {
   type: 'rgb-led', pins: ['R', 'G', 'B', 'COM'], attrs: ['common'],
   ui: { label: 'RGB LED (common cathode)', tag: 'wokwi-rgb-led', group: 'Lights and sound', show: { ledRed: 'r', ledGreen: 'g', ledBlue: 'b' } },
   links: () => [],
-  check: (id, see) => {
-    const com = see.level(`${id}:COM`);
-    const bare = ['R', 'G', 'B'].some((p) => { const l = see.level(`${id}:${p}`); return l !== null && com !== null && l !== com && see.strong(`${id}:${p}`) && see.strong(`${id}:COM`); });
+  check: (id, see, _state, attrs) => {
+    // Only a forward-biased LED carries current; reversed, nothing flows and nothing burns.
+    const anode = attrs.common === 'anode', com = see.level(`${id}:COM`);
+    const bare = ['R', 'G', 'B'].some((p) => { const l = see.level(`${id}:${p}`); return (anode ? com === 1 && l === 0 : com === 0 && l === 1) && see.strong(`${id}:${p}`) && see.strong(`${id}:COM`); });
     return bare ? [NO_RESISTOR(id)] : [];
   },
   device(ctx) {

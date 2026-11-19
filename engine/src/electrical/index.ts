@@ -74,9 +74,10 @@ export class Electrical {
     const net = buildNetlist(pic, this.lib);
     const key = net.lines.join('\n');
     if (key === this.lastKey && this.last) return;
-    this.lastKey = key;
     const report = await this.check(pic);
     if (this.closed) return;
+    // Only a real answer is kept for reuse: after a failure, the same circuit is tried again next time.
+    this.lastKey = report.state === 'ok' ? key : '';
     this.last = report;
     for (const w of report.warnings) this.seen.set(gist(w), w);
     for (const cb of this.listeners) cb(report);

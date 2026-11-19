@@ -4,6 +4,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 export interface Solution { ok: true; values: Map<string, number> }
 export interface Failure { ok: false; reason: string }
@@ -12,14 +13,19 @@ export type Result = Solution | Failure;
 const TIMEOUT_MS = 5000;
 const NO_SPICE = 'ngspice was not found, so voltages and currents are not checked. Install ngspice, or set SHIBO_NGSPICE to its path.';
 
+/** Where Shibo keeps its own copy of ngspice for this user (an unpacked package: usr/bin, usr/lib, usr/share). */
+export const userNgspice = (): string => path.join(os.homedir(), '.local/share/shibo/ngspice/usr/bin/ngspice');
+
 /**
- * Where ngspice is: the path given, else $SHIBO_NGSPICE, else "ngspice" on the PATH.
- * Returns null when a given path does not exist.
+ * Where ngspice is: the path given, else $SHIBO_NGSPICE, else Shibo's own copy
+ * for this user, else "ngspice" on the PATH. Returns null when an explicitly
+ * given path does not exist.
  */
 export function findNgspice(given?: string | null): string | null {
   const p = given ?? process.env.SHIBO_NGSPICE ?? '';
-  if (!p) return 'ngspice';
-  return fs.existsSync(p) ? p : null;
+  if (p) return fs.existsSync(p) ? p : null;
+  if (fs.existsSync(userNgspice())) return userNgspice();
+  return 'ngspice';
 }
 
 /** Environment for an unpacked ngspice (bin/ngspice next to lib/ and share/ngspice/). */
@@ -60,6 +66,9 @@ export class Spice {
     p.stdout!.setEncoding('utf8');
     p.stdout!.on('data', (d: string) => { this.buf += d; this.check(); });
     p.stderr!.on('data', () => {});            // ngspice chatters about code models it could not load; none are used
+    // An idle solver must not keep a program alive on its own: a pending solve holds its own timer meanwhile.
+    p.unref();
+    for (const io of [p.stdin, p.stdout, p.stderr]) (io as unknown as { unref?: () => void } | null)?.unref?.();
     p.stdin!.on('error', () => {});
     p.on('error', () => { this.dead = NO_SPICE; this.fail(); });
     p.on('exit', () => { if (this.proc === p) { this.proc = null; this.fail(); } });

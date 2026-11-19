@@ -128,7 +128,7 @@ export class Circuit implements Stateful {
 
   private checkParts(): void {
     const see = { level: (n: string) => this.nets.level(this.node(n)), strong: (n: string) => this.nets.strong(this.node(n)), boardPin: (n: string) => this.boardPin(n) };
-    for (const p of this.project.parts) for (const w of this.def(p.type)?.check?.(p.id, see, this.controls[p.id] ?? {}) ?? []) this.warn(w);
+    for (const p of this.project.parts) for (const w of this.def(p.type)?.check?.(p.id, see, this.controls[p.id] ?? {}, p.attrs ?? {}) ?? []) this.warn(w);
   }
 
   /**
@@ -181,10 +181,28 @@ export class Circuit implements Stateful {
     const pins = b.spiPins;
     let reply = 0xff;
     this.spiParts ??= Object.entries(this.devices).filter(([, d]) => d.spi);
-    if (pins) for (const [id, d] of this.spiParts) {
-      if (!d.spi || this.nets.level(this.node(`${id}:${d.spi.cs}`)) !== 0) continue;
-      if (d.spi.sck && !this.onBus(b, pins.sck, d.spi.sck, id)) continue;
-      reply = d.spi.transfer(byte) & 0xff;
+    if (!pins) return reply;
+    const picked = this.spiParts.filter(([id, d]) => d.spi && this.nets.level(this.node(`${id}:${d.spi.cs}`)) === 0 && (!d.spi.sck || this.onBus(b, pins.sck, d.spi.sck, id)));
+    // Chained parts (one's data out wired to the next one's data in) each take the byte the one before shifted out.
+    // Nets are looked up first: a transfer can re-resolve the circuit.
+    const net = (id: string, pin: string | undefined) => (pin ? this.nets.net(this.node(`${id}:${pin}`)) : null);
+    const mosi = this.nets.net(this.node(`${b.id}:${pins.mosi}`));
+    const outNet = new Map(picked.map(([id, d]) => [id, net(id, d.spi!.dout)]));
+    const feeder = new Map(picked.map(([id, d]) => {
+      const n = net(id, d.spi!.din);
+      const from = n === null || n === mosi ? undefined : picked.find(([j]) => j !== id && outNet.get(j) === n)?.[0];
+      return [id, from];
+    }));
+    const shifted = new Map<string, number>();         // part -> the byte it shifted out
+    for (let pass = 0; shifted.size < picked.length && pass <= picked.length; pass++) {
+      for (const [id, d] of picked) {
+        if (shifted.has(id)) continue;
+        const from = feeder.get(id);
+        if (from !== undefined && !shifted.has(from) && pass < picked.length) continue;     // wait for the chip before (in a loop, stop waiting)
+        const out = d.spi!.transfer(from !== undefined && shifted.has(from) ? shifted.get(from)! : byte) & 0xff;
+        shifted.set(id, out);
+        reply = out;
+      }
     }
     // A screen takes thousands of bytes a frame: a part whose pins change because of a byte says so itself.
     return reply;
@@ -209,7 +227,18 @@ export class Circuit implements Stateful {
           drives.push({ node: `${id}:${d.pin}`, level: d.level, pull: d.pull });
           if (d.level !== null) driven.add(`${id}:${d.pin}`);
         }
-        const nets = this.nets = resolve(links, drives);
+        let nets = resolve(links, drives);
+        // Cells in series: a cell's - on another cell's + is the + of the one below, not a short. Let go of that -.
+        if (nets.contended.length) {
+          const cells = new Set(this.project.parts.filter((p) => this.def(p.type)?.cell).map((p) => p.id));
+          const owner = (node: string) => node.slice(0, node.lastIndexOf(':'));
+          const series = (d: Drive) => d.level === 0 && cells.has(owner(d.node)) && d.node.endsWith(':-') && nets.contended.includes(nets.net(d.node))
+            && drives.some((h) => h.level === 1 && h.node.endsWith(':+') && cells.has(owner(h.node)) && owner(h.node) !== owner(d.node) && nets.net(h.node) === nets.net(d.node))
+            && drives.every((o) => o.level !== 0 || nets.net(o.node) !== nets.net(d.node) || (o.node.endsWith(':-') && cells.has(owner(o.node))));
+          const loose = drives.filter(series);
+          if (loose.length) { const drop = new Set(loose); drives.splice(0, drives.length, ...drives.filter((d) => !drop.has(d))); nets = resolve(links, drives); }
+        }
+        this.nets = nets;
 
         for (const p of this.project.parts) {
           const b = this.backends[p.id], pins = isBoard(p.type) ? boardPins[p.type] : undefined;
@@ -225,7 +254,7 @@ export class Circuit implements Stateful {
           const b = this.backends[p.id];
           if (b && isBoard(p.type)) for (const pin of boardPins[p.type]) {
             const node = `${p.id}:${pin}`, l = nets.level(node);
-            if (/^A\d$/.test(pin) && l !== null && !sourced.has(nets.net(node))) b.setAnalog(pin, l * 5);
+            if (/^A\d+$/.test(pin) && l !== null && !sourced.has(nets.net(node))) b.setAnalog(pin, l * 5);
           }
         }
         for (const a of g.analog) {

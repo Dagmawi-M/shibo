@@ -11,9 +11,8 @@ import { e12Up } from '../src/electrical/checks.ts';
 import { library } from '../src/parts/index.ts';
 import type { PartDef } from '../src/part.ts';
 
-// Tests use $SHIBO_NGSPICE, else the unpacked copy next to the project, else ngspice on the PATH.
-const LOCAL = path.join(os.homedir(), 'personal/benchsim/spikes/tools/ngspice/usr/bin/ngspice');
-const BIN = process.env.SHIBO_NGSPICE || (fs.existsSync(LOCAL) ? LOCAL : 'ngspice');
+// Tests find ngspice the same way the editor does: $SHIBO_NGSPICE, Shibo's own copy, or the PATH.
+const BIN = findNgspice() ?? 'ngspice';
 const hasSpice = (() => { try { execFileSync(BIN, ['-v'], { stdio: 'ignore', timeout: 5000, env: { ...process.env, LD_LIBRARY_PATH: path.join(path.dirname(path.dirname(BIN)), 'lib') } }); return true; } catch { return false; } })();
 const spice = new Spice(BIN);
 after(() => spice.close());

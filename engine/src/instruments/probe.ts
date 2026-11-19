@@ -72,7 +72,8 @@ export class Probe {
       // Two changes at the same instant: the later one is what the net settled to.
       if (t.times.length && t.times[t.times.length - 1] === now) { t.levels[t.levels.length - 1] = l; continue; }
       t.times.push(now); t.levels.push(l);
-      if (t.times.length > MAX_EDGES) { t.times.splice(0, t.times.length - MAX_EDGES); t.levels.splice(0, t.levels.length - MAX_EDGES); }
+      // Trim in batches: one splice per MAX_EDGES / 4 new edges keeps the cost per edge constant.
+      if (t.times.length > MAX_EDGES + (MAX_EDGES >> 2)) { t.times.splice(0, t.times.length - MAX_EDGES); t.levels.splice(0, t.levels.length - MAX_EDGES); }
     }
   }
 

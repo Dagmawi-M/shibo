@@ -6,6 +6,8 @@
 // A part with no entry here still shows up, with a description made from its
 // name (see infoFor). To describe a new part, add an entry keyed by its type.
 
+import { moreCatalogInfo } from './catalog-info-more.ts';
+
 export interface Wiring {
   /** A pin of the part. */
   pin: string;
@@ -137,8 +139,8 @@ export const catalogInfo: Record<string, PartInfo> = {
     volts: '2 V forward per segment',
     specs: ['Segments A to G plus a decimal point', 'Common anode or common cathode', 'Multi-digit versions are multiplexed', 'One resistor per segment'],
     pins: { A: 'Segment A (top)', B: 'Segment B (top right)', C: 'Segment C (bottom right)', D: 'Segment D (bottom)', E: 'Segment E (bottom left)', F: 'Segment F (top left)', G: 'Segment G (middle)', DP: 'Decimal point', COM: 'Common pin of the digit', DIG1: 'Digit 1 common', DIG2: 'Digit 2 common', DIG3: 'Digit 3 common', DIG4: 'Digit 4 common', CLN: 'Colon' },
-    wiring: [{ pin: 'A', to: '2', via: '220 Ω resistor' }, { pin: 'B', to: '3', via: '220 Ω resistor' }, { pin: 'C', to: '4', via: '220 Ω resistor' }, { pin: 'COM', to: 'GND' }],
-    code: 'digitalWrite(2, HIGH);  // segment A on (common cathode)',
+    wiring: [{ pin: 'A', to: '2', via: '220 Ω resistor' }, { pin: 'B', to: '3', via: '220 Ω resistor' }, { pin: 'C', to: '4', via: '220 Ω resistor' }, { pin: 'COM', to: '5V' }],
+    code: 'digitalWrite(2, LOW);   // segment A on (common anode: low lights it)',
   },
   buzzer: {
     summary: 'A piezo buzzer that plays tones from a toggling pin.',
@@ -432,6 +434,7 @@ export const catalogInfo: Record<string, PartInfo> = {
   },
   'led-ring': PIXELS('A ring of addressable RGB LEDs.', ['ring', 'circle', 'clock'], ['Common sizes: 12, 16, 24 LEDs']),
   'neopixel-matrix': PIXELS('A grid of addressable RGB LEDs, for pictures and text.', ['matrix', 'grid', 'panel', '8x8'], ['Rows and columns are settings']),
+  ...moreCatalogInfo,
 };
 
 /** What a pin is for: the part's own words, or the usual meaning of its name. */

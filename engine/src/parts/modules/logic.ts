@@ -45,7 +45,8 @@ const hc595: PartDef = {
         s.sh = sh; s.st = st;
       },
       // With hardware SPI the clock pulses are not seen one by one: a whole byte arrives, most significant bit first.
-      spi: { cs: 'STCP', sck: 'SHCP', transfer(b) { const out = s.sr; if (on() && ctx.level('MR') !== 0) { s.sr = b & 255; ctx.changed(); } return out; } },
+      // In a chain the byte is what the chip before shifted out (the circuit hands it over through DS).
+      spi: { cs: 'STCP', sck: 'SHCP', din: 'DS', dout: 'Q7S', transfer(b) { const out = s.sr; if (on() && ctx.level('MR') !== 0) { s.sr = b & 255; ctx.changed(); } return out; } },
       outputs: () => ({ values: Array.from({ length: 8 }, (_, i) => (s.latch >> i) & 1), powered: on() }),
       ...keep(s),
     };

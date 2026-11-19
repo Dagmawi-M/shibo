@@ -273,9 +273,12 @@ const MEGA_ORDER = 'E0 E1 E4 E5 G5 E3 H3 H4 H5 H6 B4 B5 B6 B7 J1 J0 H1 H0 D3 D2 
 const MEGA_PINS: Record<string, [string, number]> = {};
 MEGA_ORDER.split(' ').forEach((pb, i) => { MEGA_PINS[i < 54 ? String(i) : 'A' + (i - 54)] = [pb[0], +pb[1]]; });
 
-// A8-A15 are selected with MUX5 (ADCSRB bit 3): mux values 0x20-0x27.
+// The ATmega2560's own table: A0-A7 at 0-7, the 1.1 V bandgap at 0x1E and 0 V at 0x1F
+// (on the 328 those are 14 and 15), and A8-A15 selected with MUX5 (ADCSRB bit 3): 0x20-0x27.
 const megaChannels: ADCConfig['muxChannels'] = {
-  ...adcConfig.muxChannels,
+  ...Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i, { type: ADCMuxInputType.SingleEnded, channel: i }])),
+  0x1e: { type: ADCMuxInputType.Constant, voltage: 1.1 },
+  0x1f: { type: ADCMuxInputType.Constant, voltage: 0 },
   ...Object.fromEntries(Array.from({ length: 8 }, (_, i) => [0x20 + i, { type: ADCMuxInputType.SingleEnded, channel: 8 + i }])),
 };
 

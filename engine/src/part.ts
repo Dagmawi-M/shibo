@@ -43,7 +43,8 @@ export interface Device {
   analog?(): { pin: string; volts: number }[];
   i2c?: { sda: string; scl: string; address(): number; start?(write: boolean): void; write(byte: number): boolean; read(ack: boolean): number; stop?(): void };
   /** `sck`: the part's clock pin; when given, the part only hears transfers if that pin is on the board's SPI clock. Call ctx.changed() if a byte changes what the part drives. */
-  spi?: { cs: string; sck?: string; transfer(byte: number): number };
+  /** `din`/`dout`: the part's data in and out pins, when it can be chained (a 74HC595's DS and Q7S): its byte then comes from whatever drives `din`. */
+  spi?: { cs: string; sck?: string; din?: string; dout?: string; transfer(byte: number): number };
   /** Text typed into the part's own box on the page (a phone talking to a Bluetooth module). */
   text?(t: string): void;
   /** Anything this part offers others of its own type, such as a radio's receiver. */
@@ -73,9 +74,11 @@ export interface PartDef {
   /** Voltages the part puts on its pins (for chip analog inputs). */
   analog?(id: string, state: Record<string, number>, level: LevelOf): { node: string; volts: number }[];
   /** Wiring mistakes this part can recognise, as sentences for the user. */
-  check?(id: string, see: { level: LevelOf; strong(node: string): boolean; boardPin(node: string): string | null }, state: Record<string, number>): string[];
+  check?(id: string, see: { level: LevelOf; strong(node: string): boolean; boardPin(node: string): string | null }, state: Record<string, number>, attrs: Record<string, string>): string[];
   /** A switch contact: a board input wired to it floats while the contact is open, unless pulled. */
   contact?: boolean;
+  /** A cell with + and - pins: its - resting on another cell's + (cells in series) is not a short. */
+  cell?: boolean;
   /** Ratings and the model the electrical checks use (engine/src/electrical); library parts may have theirs in ratings.ts instead. */
   electrical?: Electrical;
   /** For parts that need memory, timing or a bus. Used instead of the functions above where it provides them. */

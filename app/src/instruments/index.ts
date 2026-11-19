@@ -91,8 +91,8 @@ export function mountInstruments(host: InstrumentHost): { onMessage(m: any): voi
 
   /** Sit over the bottom of the canvas, whatever the page layout around it is. */
   function place(): void {
-    dock.hidden = !open;
-    toggle.setAttribute('aria-pressed', String(open));
+    if (dock.hidden !== !open) dock.hidden = !open;
+    if (toggle.getAttribute('aria-pressed') !== String(open)) toggle.setAttribute('aria-pressed', String(open));
     if (!open) return;
     const stage = document.getElementById('stage');
     const r = stage?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
@@ -107,7 +107,14 @@ export function mountInstruments(host: InstrumentHost): { onMessage(m: any): voi
   window.addEventListener('resize', place);
   const stage = document.getElementById('stage');
   if (stage) new ResizeObserver(place).observe(stage);
-  new MutationObserver(place).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'hidden'] });
+  // Panels elsewhere on the page can open and close (classes, hidden). React to those only, and at most
+  // once a frame: placing the dock changes attributes too, which must not set off another placing.
+  let queued = false;
+  new MutationObserver((records) => {
+    if (queued || records.every((r) => dock.contains(r.target) || toggle.contains(r.target))) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; place(); });
+  }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'hidden'] });
 
   // ---- timeline ----
   function drawTimeline(): void {

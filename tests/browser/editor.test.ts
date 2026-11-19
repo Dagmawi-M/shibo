@@ -17,8 +17,8 @@ test('opens a project: every part is drawn, the palette is filled, nothing error
     // Every wire whose ends exist is drawn.
     await page.waitFor(`document.querySelectorAll('#wires path.wire').length === 5`, { what: 'five wires drawn' });
     // The catalog lists something in every group, and each card has a label.
-    assert.ok(await count(page, '#palette button.card') > 20);
-    assert.equal(await page.eval(`[...document.querySelectorAll('#palette .card .name')].filter((n) => !n.textContent.trim()).length`), 0);
+    assert.ok(await count(page, '#palette .cat-card') > 100);
+    assert.equal(await page.eval(`[...document.querySelectorAll('#palette .cat-card .cat-name')].filter((n) => !n.textContent.trim()).length`), 0);
     // The inventory lists the parts by id.
     assert.deepEqual(await page.eval(`[...document.querySelectorAll('#inventory .pick span')].map((s) => s.textContent)`), ['uno', 'led1', 'r1', 'btn1']);
     assert.equal(await text(page, '#status'), 'Stopped');
@@ -47,7 +47,7 @@ test('clicking a palette card adds the part; undo and redo take it away and back
   try {
     const { page } = ed;
     await page.waitFor(`document.querySelectorAll('#canvas .part').length === 4`);
-    await page.click('#palette button.card[data-type="buzzer"]');
+    await page.click('#palette .cat-card[data-type="buzzer"] .cat-add');
     await page.waitFor(`document.querySelectorAll('#canvas wokwi-buzzer.part').length === 1`, { what: 'a buzzer on the canvas' });
     assert.match(await text(page, '#save'), /•/, 'the project is marked unsaved');
     await page.click('#undo');
@@ -65,15 +65,16 @@ test('search narrows the palette and clearing it brings everything back', { skip
   const ed = await openEditor(starter);
   try {
     const { page } = ed;
-    const visible = `[...document.querySelectorAll('#palette button.card')].filter((b) => !b.hidden && !b.closest('details[hidden]')).length`;
+    const visible = `[...document.querySelectorAll('#palette .cat-card')].filter((b) => b.offsetParent !== null).length`;
     const all = await page.eval<number>(visible);
-    await page.click('#find');
+    await page.click('#palette .cat-search input');
     await page.type('servo');
     await page.waitFor(`${visible} < ${all}`, { what: 'the palette to narrow' });
-    const names: string[] = await page.eval(`[...document.querySelectorAll('#palette button.card')].filter((b) => !b.hidden && !b.closest('details[hidden]')).map((b) => b.textContent)`);
+    const names: string[] = await page.eval(`[...document.querySelectorAll('#palette .cat-card')].filter((b) => b.offsetParent !== null).map((b) => b.querySelector('.cat-name').textContent)`);
     assert.ok(names.length >= 1 && names.every((n) => /servo/i.test(n)), `only servos are left: ${names.join(', ')}`);
-    await page.eval(`(() => { const f = document.getElementById('find'); f.value = ''; f.dispatchEvent(new Event('input')); })()`);
-    assert.equal(await page.eval(visible), all);
+    await page.eval(`(() => { const f = document.querySelector('#palette .cat-search input'); f.value = ''; f.dispatchEvent(new Event('input')); })()`);
+    // The catalogue redraws on the next frame, so wait for it.
+    await page.waitFor(`${visible} === ${all}`, { what: 'every part back after clearing the search' });
   } finally { await ed.close(); }
 });
 
@@ -81,7 +82,7 @@ test('clicking one pin and then another draws a wire, and Save writes it to disk
   const ed = await openEditor(starter);
   try {
     const { page } = ed;
-    await page.click('#palette button.card[data-type="buzzer"]');
+    await page.click('#palette .cat-card[data-type="buzzer"] .cat-add');
     await page.waitFor(`document.querySelector('#canvas .pin[data-ref="buzzer1:1"]')`, { what: 'the new buzzer pins' });
     const before = await count(page, '#wires path.wire');
     await page.click('#canvas .pin[data-ref="buzzer1:1"]');
@@ -180,7 +181,7 @@ test('right-click on a part offers Rotate and Remove, and Remove works', { skip 
     await page.click('#canvas wokwi-led', { button: 'right' });
     await page.waitFor(`!document.getElementById('menu').hidden`, { what: 'the menu' });
     const items: string[] = await page.eval(`[...document.querySelectorAll('#menu [role=menuitem]')].map((b) => b.textContent)`);
-    assert.deepEqual(items, ['Rotate', 'Remove led1']);
+    assert.deepEqual(items, ['Rotate', 'Duplicate', 'Copy', 'Remove led1']);
     await page.click('#menu [role=menuitem]:last-child');
     await page.waitFor(`!document.querySelector('#canvas wokwi-led')`, { what: 'the LED to be removed' });
     assert.ok(!(await page.eval<string[]>(`[...document.querySelectorAll('#inventory .pick span')].map((s) => s.textContent)`)).includes('led1'));
@@ -224,5 +225,25 @@ test('a project file that cannot be read says so and is not saved over', { skip 
     const { page } = ed;
     await page.waitFor(`/could not be read/.test(document.getElementById('problems').textContent)`, { what: 'the load error' });
     assert.equal(await page.eval(`document.getElementById('save').disabled`), true);
+  } finally { await ed.close(); }
+});
+
+test('the page goes idle after loading: no loop keeps the main thread busy', { skip }, async () => {
+  // A panel that re-placed itself on every attribute change once locked the page (and VS Code) solid.
+  const ed = await openEditor(starter);
+  try {
+    const { page } = ed;
+    await page.waitFor(`document.querySelectorAll('#canvas .part').length === 4`, { what: 'parts drawn' });
+    const busy = await page.eval<number>(`new Promise((done) => {
+      let frames = 0; const t0 = performance.now();
+      const tick = () => { frames++; if (performance.now() - t0 < 1000) requestAnimationFrame(tick); else done(frames); };
+      requestAnimationFrame(tick);
+    })`);
+    assert.ok(busy >= 20, `only ${busy} frames in a second: the page is busy doing something`);
+    // Toggling the side panels (attribute changes all over the page) must settle too.
+    await page.eval(`document.getElementById('panels').click()`);
+    await page.eval(`document.getElementById('panels').click()`);
+    assert.equal(await page.eval(`1 + 1`), 2);
+    assert.deepEqual(page.errors, []);
   } finally { await ed.close(); }
 });

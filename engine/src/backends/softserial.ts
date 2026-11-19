@@ -75,7 +75,7 @@ export class SoftSerial {
     this.deglitch(this.freq / 300000);
     let min = Infinity;
     for (let i = 1; i < e.length; i++) min = Math.min(min, e[i] - e[i - 1]);
-    if (Number.isFinite(min)) this.state.bitCycles = this.snap(min, this.state.bitCycles);
+    if (Number.isFinite(min)) this.state.bitCycles = this.snap(min, this.state.bitCycles, e);
     const bit = this.state.bitCycles;
     if (!bit) return;
     this.deglitch(bit / 2);
@@ -105,12 +105,31 @@ export class SoftSerial {
     }
   }
 
-  private snap(cycles: number, known: number): number {
+  /**
+   * The bit time, from the shortest gap between edges. That gap can span several bits ("0" is
+   * 0x30: its shortest run is two bits), so of the bauds within reach, the slowest whose bit time
+   * puts every edge of the first frame on a whole bit is taken.
+   */
+  private snap(cycles: number, known: number, e: number[]): number {
     if (known && cycles >= known * 0.9) return known;
-    const baud = this.freq / cycles;
-    const near = BAUDS.reduce((a, b) => (Math.abs(b - baud) < Math.abs(a - baud) ? b : a));
-    if (Math.abs(near - baud) / near > 0.06) return known;
-    return Math.round(this.freq / near);
+    const fits = (bit: number) => {
+      for (let i = 1; i < e.length && e[i] - e[0] < bit * 9.75; i++) {
+        const k = (e[i] - e[0]) / bit;
+        if (Math.abs(k - Math.round(k)) > 0.25) return false;
+      }
+      return true;
+    };
+    for (const baud of BAUDS) {                 // slowest first: the longest bit time that fits
+      const bit = this.freq / baud;
+      if (bit > cycles * 1.06 || (known && bit >= known * 0.9)) continue;
+      // The gap must be a whole number of these bits, and so must every edge of the frame.
+      const k = Math.round(cycles / bit);
+      if (k < 1 || Math.abs(cycles / bit - k) > 0.06 * k) continue;
+      if (this.cpu.cycles < e[0] + bit * 10) return known;      // its frame is not all here yet: wait for it
+      if (!fits(bit)) continue;
+      return Math.round(bit);
+    }
+    return known;
   }
 
   /** Queue a byte for RX: start bit, 8 data bits LSB first, stop bit. */
