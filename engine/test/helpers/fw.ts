@@ -1,20 +1,20 @@
-// Runs a real compiled sketch on the emulated Uno inside a circuit.
+// Runs a real compiled sketch on an emulated board (the Uno unless told otherwise) inside a circuit.
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Engine } from '../../src/engine.ts';
 import { Circuit } from '../../src/circuit.ts';
-import { UnoBackend } from '../../src/backends/avr.ts';
-import { buildUno } from '../../src/build.ts';
+import { createBackend } from '../../src/backends/index.ts';
+import { buildSketch } from '../../src/build.ts';
 import type { Project } from '../../src/project.ts';
 
-export async function fw(sketch: string, parts: { id: string; type: string; attrs?: Record<string, string> }[], wires: [string, string][]) {
+export async function fw(sketch: string, parts: { id: string; type: string; attrs?: Record<string, string> }[], wires: [string, string][], board = 'uno') {
   const dir = mkdtempSync(path.join(tmpdir(), 'shibo-fw-'));
   writeFileSync(path.join(dir, 'fw.ino'), sketch);
-  const built = await buildUno(dir);
+  const built = await buildSketch(dir, board);
   if (!built.ok) throw new Error('sketch did not build:\n' + built.log);
-  const engine = new Engine(); const uno = new UnoBackend('u', built.hex!); engine.addBackend(uno);
-  const project: Project = { version: 1, parts: [{ id: 'u', type: 'uno', x: 0, y: 0 }, ...parts.map((p) => ({ x: 0, y: 0, ...p }))], wires: wires.map(([from, to]) => ({ from, to })), boards: [{ part: 'u', firmware: '' }] };
+  const engine = new Engine(); const uno = createBackend(board, 'u', built.hex!); engine.addBackend(uno);
+  const project: Project = { version: 1, parts: [{ id: 'u', type: board, x: 0, y: 0 }, ...parts.map((p) => ({ x: 0, y: 0, ...p }))], wires: wires.map(([from, to]) => ({ from, to })), boards: [{ part: 'u', firmware: '' }] };
   const circuit = new Circuit(engine, project, { u: uno });
   let serial = ''; uno.onSerial((b) => { serial += String.fromCharCode(b); });
   return {

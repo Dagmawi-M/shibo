@@ -13,6 +13,8 @@ export interface CatalogEntry {
 export const catalog: CatalogEntry[] = [
   { type: 'uno', label: 'Arduino Uno', tag: 'wokwi-arduino-uno', group: 'Boards', board: true },
   { type: 'nano', label: 'Arduino Nano', tag: 'wokwi-arduino-nano', group: 'Boards', board: true },
+  { type: 'mega', label: 'Arduino Mega 2560', tag: 'wokwi-arduino-mega', group: 'Boards', board: true },
+  { type: 'attiny85', label: 'ATtiny85 (Digispark-style)', tag: 'shibo-attiny85', group: 'Boards', board: true },
   ...Object.values(library).filter((d) => d.ui).map((d) => ({
     type: d.type, label: d.ui!.label, tag: d.ui!.tag, group: d.ui!.group,
     ...(d.attrs?.length ? { attrs: d.attrs } : {}), ...(d.ui!.show ? { show: d.ui!.show } : {}), ...(d.ui!.events ? { events: d.ui!.events } : {}),

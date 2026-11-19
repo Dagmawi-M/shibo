@@ -3,3 +3,4 @@ import './lights/index.ts';
 import './actuators/index.ts';
 import './sensors/module.ts';
 import './modules/index.ts';
+import './boards/attiny85.ts';

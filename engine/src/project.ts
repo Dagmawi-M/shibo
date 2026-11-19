@@ -11,9 +11,16 @@ export interface Project {
 export const boardPins: Record<string, string[]> = {
   uno: [...Array.from({ length: 14 }, (_, i) => String(i)), 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', '5V', '3.3V', 'GND', 'VIN', 'AREF', 'IOREF', 'RESET'],
   nano: [...Array.from({ length: 14 }, (_, i) => String(i)), 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', '5V', '3.3V', 'GND', 'VIN', 'AREF', 'RESET'],
+  attiny85: ['0', '1', '2', '3', '4', '5', '5V', 'GND', 'VIN'],
+  mega: [...Array.from({ length: 54 }, (_, i) => String(i)), ...Array.from({ length: 16 }, (_, i) => 'A' + i), '5V', '3.3V', 'GND', 'VIN', 'AREF', 'IOREF', 'RESET'],
 };
 
-const WOKWI_BOARDS: Record<string, string> = { 'wokwi-arduino-uno': 'uno', 'wokwi-arduino-nano': 'nano' };
+/** Header pins that are another name for a board pin: the Mega's SDA and SCL are pins 20 and 21. */
+const boardAliases: Record<string, Record<string, string>> = {
+  mega: { SDA: '20', SCL: '21' },
+};
+
+const WOKWI_BOARDS: Record<string, string> = { 'wokwi-arduino-uno': 'uno', 'wokwi-arduino-nano': 'nano', 'wokwi-arduino-mega': 'mega' };
 const UNKNOWN = 'unknown:';
 
 export const isBoard = (type: string): boolean => Object.hasOwn(boardPins, type);
@@ -82,6 +89,8 @@ export function canonicalPin(type: string, pin: string): string | null {
   const pins = pinsOf(type);
   if (!pins) return null;
   if (pins.includes(pin)) return pin;
+  const alias = Object.hasOwn(boardAliases, type) && Object.hasOwn(boardAliases[type], pin) ? boardAliases[type][pin] : undefined;
+  if (alias) return alias;
   const base = pin.replace(/\.\d+$/, '');
   return isBoard(type) && base !== pin && pins.includes(base) ? base : null;
 }

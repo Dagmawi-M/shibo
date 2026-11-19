@@ -5,6 +5,7 @@ import '@wokwi/elements';
 import './drawings/index.ts';
 import { paintTft } from './drawings/modules/paint.ts';
 import { connect } from './transport.ts';
+import './drawings/index.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string }
