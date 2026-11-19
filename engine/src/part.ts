@@ -39,7 +39,8 @@ export interface Device {
   display?(): Record<string, OutputValue>;
   analog?(): { pin: string; volts: number }[];
   i2c?: { sda: string; scl: string; address(): number; start?(write: boolean): void; write(byte: number): boolean; read(ack: boolean): number; stop?(): void };
-  spi?: { cs: string; transfer(byte: number): number };
+  /** `sck`: the part's clock pin; when given, the part only hears transfers if that pin is on the board's SPI clock. */
+  spi?: { cs: string; sck?: string; transfer(byte: number): number };
   save(): unknown;
   restore(s: unknown): void;
 }

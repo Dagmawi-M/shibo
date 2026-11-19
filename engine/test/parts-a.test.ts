@@ -11,7 +11,7 @@ const near = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) <=
 test('every library part is in the catalog with a drawing and a label', () => {
   for (const type of Object.keys(library)) {
     const c = catalog.find((x) => x.type === type);
-    assert.ok(c, type); assert.match(c!.tag, /^wokwi-/); assert.ok(c!.label.length > 1); assert.ok(c!.group);
+    assert.ok(c, type); assert.match(c!.tag, /^(wokwi|shibo)-/); assert.ok(c!.label.length > 1); assert.ok(c!.group);
   }
   assert.ok(catalog.some((c) => c.type === 'nano' && c.board));
 });

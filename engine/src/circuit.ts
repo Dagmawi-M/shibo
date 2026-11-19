@@ -158,6 +158,7 @@ export class Circuit implements Stateful {
     let reply = 0xff;
     if (pins) for (const [id, d] of Object.entries(this.devices)) {
       if (!d.spi || this.nets.level(this.node(`${id}:${d.spi.cs}`)) !== 0) continue;
+      if (d.spi.sck && !this.onBus(b, pins.sck, d.spi.sck, id)) continue;
       reply = d.spi.transfer(byte) & 0xff;
     }
     this.update(true);
@@ -193,6 +194,15 @@ export class Circuit implements Stateful {
         // What parts connect and drive can depend on levels (is it powered? is the coil on?).
         // If resolving changed that, resolve again with the new picture.
         if (this.gather().key !== g.key) { this.again = true; continue; }
+        // An analog input on a net held high or low with no analog source reads the rail.
+        const sourced = new Set(g.analog.map((a) => nets.net(this.node(a.node))));
+        for (const p of this.project.parts) {
+          const b = this.backends[p.id];
+          if (b && isBoard(p.type)) for (const pin of boardPins[p.type]) {
+            const node = `${p.id}:${pin}`, l = nets.level(node);
+            if (/^A\d$/.test(pin) && l !== null && !sourced.has(nets.net(node))) b.setAnalog(pin, l * 5);
+          }
+        }
         for (const a of g.analog) {
           const net = nets.net(this.node(a.node));
           for (const q of this.project.parts) {

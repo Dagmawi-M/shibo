@@ -2,6 +2,7 @@
 // logic; every change is a message to the engine, and what it draws is what
 // the engine sends back.
 import '@wokwi/elements';
+import './drawings/index.ts';
 import { connect } from './transport.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }

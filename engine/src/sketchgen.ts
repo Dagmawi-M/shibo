@@ -26,6 +26,7 @@ const ROLES: Record<string, Role[]> = {
   servo: one('PWM', 'out'), 'hc-sr04': [{ pins: ['TRIG'], kind: 'out', suffix: 'TRIG' }, { pins: ['ECHO'], kind: 'in', suffix: 'ECHO' }],
   dht22: one('SDA', 'in'), 'ir-receiver': one('DAT', 'in'), neopixel: one('DIN', 'out'), 'led-ring': one('DIN', 'out'), 'neopixel-matrix': one('DIN', 'out'),
   'stepper-motor': each(['A-', 'A+', 'B+', 'B-'], 'out'),
+  '74hc595': each(['DS', 'SHCP', 'STCP'], 'out'), '74hc165': [...each(['PL', 'CP'], 'out'), { pins: ['Q7'], kind: 'in', suffix: 'Q7' }], cd4051: [...each(['A', 'B', 'C'], 'out'), { pins: ['COM'], kind: 'analog', suffix: 'COM' }],
 };
 const POWER = /^(GND|5V|3\.3V|VIN|AREF|IOREF|RESET)$/;
 
