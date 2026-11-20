@@ -299,3 +299,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
 .canvas .overloaded { filter: drop-shadow(0 0 4px #e8590c); }
+
+/* ---------- share box and embed mode ---------- */
+.share-box { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); box-shadow: var(--shadow-lg); padding: 14px 16px; width: min(520px, calc(100vw - 32px)); }
+.share-box::backdrop { background: rgb(0 0 0 / .35); }
+.share-box h3 { margin: 0 0 10px; font-size: 14px; }
+.share-box textarea, .share-box input { width: 100%; box-sizing: border-box; font: 12px var(--mono); padding: 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); resize: vertical; word-break: break-all; }
+.share-box input { margin-bottom: 8px; }
+.share-note { color: var(--mute); margin: 8px 0; }
+.share-close { float: right; }
+.open-full { display: none; }
+body.embed .palette, body.embed .bar > :not(.brand):not(.group):not(.status):not(.open-full), body.embed .bar .group.joined,
+body.embed .side > :not(.serial), body.embed .minimap, body.embed .welcome, body.embed .pin, body.embed .where { display: none !important; }
+body.embed .main { grid-template-columns: 1fr; }
+body.embed .side { grid-template-columns: 1fr; }
+body.embed .work { grid-template-rows: 1fr 140px; }
+body.embed .open-full { display: inline; margin-left: auto; color: var(--accent); font-size: 12px; }
+body.embed-blocked .stage { visibility: hidden; }

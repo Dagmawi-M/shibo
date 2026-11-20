@@ -45,7 +45,7 @@ export function startServer(opts: { dir: string; port: number; build?: (dir: str
     if (!ours.includes(req.headers.host ?? '')) return deny(403, 'forbidden');
     const origin = req.headers.origin;
     if (origin && !ours.some((h) => origin === `http://${h}`)) return deny(403, 'forbidden');
-    const url = (req.url ?? '/').split('?')[0];
+    const [url, query = ''] = (req.url ?? '/').split('?');
 
     if (req.method === 'GET' && url === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
@@ -74,7 +74,9 @@ export function startServer(opts: { dir: string; port: number; build?: (dir: str
       const name = url === '/' ? 'index.html' : url.slice(1);
       if (!Object.hasOwn(FILES, name)) return deny(404, 'not found');
       const body = fs.readFileSync(path.join(appDir, name));
-      res.writeHead(200, { 'content-type': FILES[name], 'cache-control': 'no-store', 'content-security-policy': CSP, 'x-content-type-options': 'nosniff' });
+      // An embed (?embed=1) is meant to sit in another page's iframe; the full editor never is.
+      const embed = name === 'index.html' && new URLSearchParams(query).get('embed') === '1';
+      res.writeHead(200, { 'content-type': FILES[name], 'cache-control': 'no-store', 'content-security-policy': embed ? CSP.replace("frame-ancestors 'none'", 'frame-ancestors *') : CSP, 'x-content-type-options': 'nosniff' });
       res.end(body);
       return;
     }

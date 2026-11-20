@@ -11,6 +11,7 @@ import { mountInstruments } from './instruments/index.ts';
 import { mountCatalog } from './catalog.ts';
 import { autoRoute, bendPath, dragSegment, nearestSegment, simplify, smoothPath, type Pt, type Rect } from './route.ts';
 import { icons } from './icons.ts';
+import { mountShare, EMBED, fullEditorUrl } from './share.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string; points?: Pt[] }
@@ -53,6 +54,8 @@ document.getElementById('app')!.innerHTML = `
   <button id="fit" title="Fit the whole circuit in the window">${icons.fit}<span class="label">Fit</span></button>
   <button id="snap" class="icon-only toggle" title="Snap parts and wire bends to the grid (hold Alt to place freely)" aria-label="Snap to grid">${icons.grid}</button>
   <span class="sep"></span>
+  <button id="share" title="Copy a link or embed code for this circuit, or open one">${icons.share}<span class="label">Share</span></button>
+  <a id="open-full" class="open-full" target="_blank" rel="noopener">Open in Shibo</a>
   <button id="guide" title="Write a printable list of parts and connections">${icons.guide}<span class="label">Wiring guide</span></button>
   <button id="panels" title="Show or hide the serial monitor, settings and problems">${icons.panels}<span class="label" id="panels-label"></span></button>
 </header>
@@ -91,6 +94,14 @@ const $ = <T extends HTMLElement>(id: string) => own[id] as T;
 const canvas = $('canvas'), stage = $('stage'), wiresSvg = document.getElementById('wires') as unknown as SVGSVGElement;
 
 const link = connect();
+if (EMBED) {
+  // An embed is read-only: it may run the circuit and use its controls, never change it.
+  document.body.classList.add('embed');
+  const blocked = new Set(['edit', 'save', 'undo', 'redo', 'createSketch', 'template', 'guide']);
+  const send = link.send;
+  link.send = (m: any) => { if (!blocked.has(m?.t)) send(m); };
+  (document.getElementById('open-full') as HTMLAnchorElement).href = fullEditorUrl();
+}
 
 let project: Project = { parts: [], wires: [] };
 let catalog: CatalogEntry[] = [];
@@ -136,8 +147,10 @@ const inst = mountInstruments({
 });
 
 // ---------- messages from the engine ----------
+const share = mountShare({ send: (m) => link.send(m), hint: (t) => hint(t), menu: document.getElementById('menu')!, button: document.getElementById('share')! });
 link.onMessage((m) => {
   inst.onMessage(m);
+  void share.onMessage(m);
   switch (m.t) {
     case 'project':
       if (m.dir !== dir) { dir = m.dir; setOrigin(m.project); selected = null; group.clear(); }
@@ -499,7 +512,7 @@ function drawWires(): void {
     hit.addEventListener('pointerdown', (e) => { const id = partUnder(e); if (id) startDrag(e as PointerEvent, id); else startBend(e as PointerEvent, index); });
     hit.addEventListener('click', (e) => { e.stopPropagation(); if (bent) { bent = false; return; } if (state !== 'running' && !partUnder(e)) pick(); });
     hit.addEventListener('contextmenu', (e) => {
-      e.preventDefault(); if (state === 'running') return;
+      e.preventDefault(); if (state === 'running' || EMBED) return;
       const id = partUnder(e);
       if (id) { partMenu(e as MouseEvent, id); return; }
       pick();
@@ -534,6 +547,7 @@ function drawWires(): void {
 /** Drag a wire sideways to bend it. Its ends stay on their pins; the bends are saved with the circuit. */
 let bent = false;                // a bend just finished: the click that follows is not a selection
 function startBend(e: PointerEvent, index: number): void {
+  if (EMBED) return;
   if (state === 'running' || e.button !== 0 || wireFrom || !routes[index]) return;
   const start = at(e), base = routes[index].map((p) => [p[0], p[1]] as Pt), seg = nearestSegment(base, start);
   // Listen on the window: the wire's own element is redrawn (and so detached) on every move.
@@ -561,6 +575,7 @@ function startBend(e: PointerEvent, index: number): void {
 
 // ---------- wiring: click pin then pin, or press on one pin and release on another ----------
 function pinDown(ref: string): void {
+  if (EMBED) return;
   if (state === 'running') return;
   if (!wireFrom) {
     wireFrom = ref; pointer = pinPos(ref) ?? pointer;
@@ -627,6 +642,7 @@ function menu(e: MouseEvent, items: MenuItem[], color?: (c: string) => void): vo
 }
 /** The menu for a part: on its own, or for everything selected with it. */
 function partMenu(e: MouseEvent, id: string): void {
+  if (EMBED) return;
   if (!group.has(id)) selectParts([id]);
   layout(); drawInventory();
   if (group.size > 1) {
@@ -640,6 +656,7 @@ window.addEventListener('pointerdown', (e) => { if (!$('menu').hidden && !$('men
 
 // ---------- moving parts: one, or everything selected ----------
 function startDrag(e: PointerEvent, id: string): void {
+  if (EMBED) return;
   if (state === 'running' || e.button !== 0 || wireFrom) return;
   const el = els[id], part = project.parts.find((p) => p.id === id);
   if (!el || !part) return;
@@ -771,7 +788,7 @@ stage.addEventListener('pointerdown', (e) => {
   if (e.button === 1 || (e.button === 0 && spaceDown)) { e.preventDefault(); pan(e); return; }
   if (e.button !== 0 || wireFrom || !empty) return;
   // While running nothing can be selected, so a drag just moves the view, as it always has.
-  if (state === 'running') { pan(e); return; }
+  if (state === 'running' || EMBED) { pan(e); return; }
   const [x0, y0] = at(e), keep = e.shiftKey || e.ctrlKey || e.metaKey ? new Set(group) : new Set<string>();
   const box = document.createElement('div'); box.className = 'marquee';
   let moved = false;
@@ -860,7 +877,7 @@ window.addEventListener('keydown', (e) => {
   const typing = typingIn(e.target);
   const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (mod && key === 's') { e.preventDefault(); if (dirty) link.send({ t: 'save' }); return; }
-  if (typing) return;
+  if (typing || EMBED) return;
   if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) { if (!spaceDown) { spaceDown = true; stage.classList.add('pan-ready'); } e.preventDefault(); return; }
   if (mod && key === 'z') { e.preventDefault(); link.send({ t: e.shiftKey ? 'redo' : 'undo' }); return; }
   if (mod && key === 'y') { e.preventDefault(); link.send({ t: 'redo' }); return; }

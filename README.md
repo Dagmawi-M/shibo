@@ -62,6 +62,25 @@ npm run app -- path/to/a/sketch/folder
 
 and open `http://127.0.0.1:8190`. A Wokwi `diagram.json` in the folder is imported.
 
+## Sharing
+
+**Share → Copy share link** gives a link that holds the whole project: parts,
+wires, settings, board and the sketch. Nothing is uploaded anywhere; the
+project is compressed into the part of the link after `#p=`, which browsers
+never send to a server. Whoever opens the link needs Shibo running (the
+standalone app at `http://127.0.0.1:8190/`, or **Share → Open from link…** in
+the VS Code panel, where you paste it).
+
+Opening a link replaces the circuit as an edit (Undo brings yours back, and
+nothing is saved until you press Save). If your folder already has a
+different sketch, it is copied into `.shibo-backup/` before the shared one is
+written. A damaged, cut-off, or newer-format link shows a message and changes
+nothing.
+
+**Share → Copy embed code** gives an `<iframe>` snippet. The `?embed=1` view
+is read-only: the circuit, Run/Stop, the serial monitor and an "Open in Shibo"
+link. An embed never replaces unsaved work or a different sketch.
+
 ## How it is built
 
 | Folder | What is in it |

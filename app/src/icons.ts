@@ -19,5 +19,6 @@ export const icons = {
   panels: svg('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 14.5h18"/>'),
   search: svg('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
   warn: svg('<path d="M10.3 4.2 2.7 17.5A2 2 0 0 0 4.4 20.5h15.2a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>'),
+  share: svg('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>'),
   check: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
 };

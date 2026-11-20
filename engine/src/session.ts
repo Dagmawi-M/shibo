@@ -1,6 +1,7 @@
 // One open project and at most one running simulation, driven by JSON
 // messages. The browser page and the VS Code panel both talk to this, each
 // over its own transport, so neither contains any simulation logic.
+import { MAX_SKETCH } from './share.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Engine } from './engine.ts';
@@ -31,6 +32,8 @@ export type InMsg =
   | { t: 'stop' }
   | { t: 'control'; part: string; name: string; value: number }
   | { t: 'serial'; text: string; part?: string }
+  | { t: 'shareInfo' }
+  | { t: 'openShared'; project: unknown; sketch: string | null; embed?: boolean }
   | InstrumentIn;
 
 import type { Outputs } from './circuit.ts';
@@ -47,6 +50,8 @@ export type OutMsg =
   /** Voltages and currents from the circuit solver: per wire (in project order) and a status per part. */
   | { t: 'electrical'; state: Report['state']; reason?: string; wires: Report['wires']; parts: Report['parts'] }
   | { t: 'error'; message: string }
+  | { t: 'shareInfo'; project: Project; sketch: string | null }
+  | { t: 'shared'; ok: boolean; message: string }
   | InstrumentOut;
 
 /** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
@@ -114,6 +119,8 @@ export class Session {
         case 'start': await this.start(); break;
         case 'stop': this.stop(); break;
         case 'control': this.run?.circuit.setControl(String(m.part), String(m.name), Number(m.value)); break;
+        case 'shareInfo': this.send({ t: 'shareInfo', project: this.project, sketch: this.sketchText() }); break;
+        case 'openShared': this.openShared(m.project, m.sketch, m.embed === true); break;
         case 'serial': {
           if (typeof m.text !== 'string') throw new Error('serial text must be text');
           const bytes = new TextEncoder().encode(m.text);
@@ -326,6 +333,48 @@ export class Session {
   /** The sketch that Run uploads: the first .ino in the folder, by name. */
   private sketchFile(): string | null {
     try { return this.dir ? fs.readdirSync(this.dir).filter((f) => f.endsWith('.ino')).sort()[0] ?? null : null; } catch { return null; }
+  }
+
+  private sketchText(): string | null {
+    const f = this.sketchFile();
+    try { return f ? fs.readFileSync(path.join(this.dir, f), 'utf8') : null; } catch { return null; }
+  }
+
+  /**
+   * Load a project from a share link. The circuit replaces this one as an
+   * edit (Undo brings the old one back; nothing is saved). A different sketch
+   * is written over the folder's only after the old one is copied into
+   * .shibo-backup. An embed never touches unsaved work or a different sketch.
+   */
+  private openShared(raw: unknown, sketch: unknown, embed: boolean): void {
+    const refuse = (message: string) => this.send({ t: 'shared', ok: false, message });
+    if (!this.dir) return refuse('no project folder is open');
+    if (this.loadError) return refuse(this.loadError);
+    let next: Project;
+    try { next = parseProject(raw, 'the link'); } catch (err) { return refuse((err as Error).message); }
+    if (sketch != null && (typeof sketch !== 'string' || sketch.length > MAX_SKETCH)) return refuse('the sketch in the link is not usable');
+    const file = this.sketchFile(), old = this.sketchText();
+    const replaces = typeof sketch === 'string' && old !== null && old !== sketch && old.trim() !== '';
+    if (embed && (this.dirty || replaces)) return refuse('this Shibo has other work open, so the embed will not replace it. Use "Open in Shibo" to load the circuit.');
+    this.stop();
+    this.lastWarnings = [];
+    this.past.push(this.project); if (this.past.length > 200) this.past.shift();
+    this.future = [];
+    this.project = next; this.dirty = true;
+    let note = 'Opened the shared circuit. Undo brings back what was here; Save keeps the new one.';
+    if (typeof sketch === 'string' && old !== sketch) {
+      if (replaces) {
+        const backup = path.join(this.dir, '.shibo-backup');
+        fs.mkdirSync(backup, { recursive: true });
+        const kept = path.join(backup, `${new Date().toISOString().replace(/[:.]/g, '-')}-${file}`);
+        fs.copyFileSync(path.join(this.dir, file!), kept);
+        note += ` Your old sketch was kept as .shibo-backup/${path.basename(kept)}.`;
+      }
+      const target = file ?? `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`;
+      fs.writeFileSync(path.join(this.dir, target), sketch);
+    }
+    this.sendProject();
+    this.send({ t: 'shared', ok: true, message: note });
   }
 
   private createSketch(): void {
