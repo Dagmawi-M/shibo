@@ -15,6 +15,8 @@ import { generateGuide } from './guide.ts';
 import { templates } from './templates.ts';
 import { Electrical, Spice, type Report } from './electrical/index.ts';
 import { Instruments, INSTRUMENT_MESSAGES, type InstrumentIn, type InstrumentOut } from './instruments/index.ts';
+import { exportBom, loadPrices, savePrice, PRICES_FILE } from './prices.ts';
+import type { PriceBook, PriceEntry } from './bom.ts';
 import { scriptProblems, setScript } from './instruments/envscript.ts';
 
 export type InMsg =
@@ -31,6 +33,9 @@ export type InMsg =
   | { t: 'stop' }
   | { t: 'control'; part: string; name: string; value: number }
   | { t: 'serial'; text: string; part?: string }
+  | { t: 'prices' }
+  | { t: 'exportBom'; format: 'csv' | 'md' }
+  | { t: 'setPrice'; key: string; entry: PriceEntry; currency?: string }
   | InstrumentIn;
 
 import type { Outputs } from './circuit.ts';
@@ -47,6 +52,8 @@ export type OutMsg =
   /** Voltages and currents from the circuit solver: per wire (in project order) and a status per part. */
   | { t: 'electrical'; state: Report['state']; reason?: string; wires: Report['wires']; parts: Report['parts'] }
   | { t: 'error'; message: string }
+  | { t: 'prices'; book: PriceBook; file: string }
+  | { t: 'bomExported'; path: string }
   | InstrumentOut;
 
 /** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
@@ -113,6 +120,9 @@ export class Session {
         case 'guide': this.writeGuide(); break;
         case 'start': await this.start(); break;
         case 'stop': this.stop(); break;
+        case 'prices': this.send({ t: 'prices', book: loadPrices(this.dir), file: path.join(this.dir, PRICES_FILE) }); break;
+        case 'setPrice': this.send({ t: 'prices', book: savePrice(this.dir, m.key, m.entry, m.currency), file: path.join(this.dir, PRICES_FILE) }); break;
+        case 'exportBom': this.send({ t: 'bomExported', path: exportBom(this.dir, this.project, m.format === 'md' ? 'md' : 'csv') }); break;
         case 'control': this.run?.circuit.setControl(String(m.part), String(m.name), Number(m.value)); break;
         case 'serial': {
           if (typeof m.text !== 'string') throw new Error('serial text must be text');
