@@ -34,6 +34,23 @@
 
 Boards so far: Arduino Uno, Nano, Mega 2560 and ATtiny85. The ATtiny85 needs ATTinyCore (`arduino-cli core install ATTinyCore:avr` with its board-manager URL) and builds as `ATTinyCore:avr:attinyx5micr:sketchclock=16pll`; USB (V-USB/DigiKeyboard) is not simulated. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
 
+## Parts list
+
+**Parts list** in the toolbar shows what to buy for the circuit: parts grouped
+by what you would ask for in a shop (LED colour and size, resistor value, LCD
+with or without an I2C backpack, ...), the board, a breadboard when there are
+loose parts, and one jumper wire per wire.
+
+Shibo never makes up a price. Prices come from `prices.json` in the project
+folder (currency ETB unless you change it; a shop and a date per entry). The
+copy in this repository lists every part with `"price": null`. Type a price or
+shop into the panel and it is saved to that file; parts with no price show
+"price not set" and the total says how many are missing. If the project folder
+cannot be reached, prices are kept in the browser instead. **Export CSV** and
+**Export Markdown** write `parts-list.csv` / `parts-list.md` into the project
+folder. After adding parts to the engine, run `node scripts/prices.mjs` to
+refresh the shipped `prices.json`.
+
 ## Install
 
 Shibo is not on the VS Code Marketplace yet. To try it, build the extension package from source:

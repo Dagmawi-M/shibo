@@ -12,6 +12,7 @@ import { mountCatalog } from './catalog.ts';
 import { autoRoute, bendPath, dragSegment, nearestSegment, simplify, smoothPath, type Pt, type Rect } from './route.ts';
 import { icons } from './icons.ts';
 import { mountShare, EMBED, fullEditorUrl } from './share.ts';
+import { mountBom } from './bom-panel.ts';
 
 interface Part { id: string; type: string; x: number; y: number; rot?: number; attrs?: Record<string, string> }
 interface Wire { from: string; to: string; color?: string; points?: Pt[] }
@@ -146,10 +147,12 @@ const inst = mountInstruments({
   project: () => project, controlsOf: (id) => entry(id)?.controls ?? {},
 });
 
+const bom = mountBom({ send: (m) => link.send(m), project: () => project as never });
+
 // ---------- messages from the engine ----------
 const share = mountShare({ send: (m) => link.send(m), hint: (t) => hint(t), menu: document.getElementById('menu')!, button: document.getElementById('share')! });
 link.onMessage((m) => {
-  inst.onMessage(m);
+  inst.onMessage(m); bom.onMessage(m);
   void share.onMessage(m);
   switch (m.t) {
     case 'project':

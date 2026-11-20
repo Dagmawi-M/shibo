@@ -1,0 +1,773 @@
+{
+  "currency": "ETB",
+  "prices": {
+    "uno": {
+      "name": "Arduino Uno R3",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "nano": {
+      "name": "Arduino Nano",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "mega": {
+      "name": "Arduino Mega 2560",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "attiny85": {
+      "name": "ATtiny85 microcontroller",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led": {
+      "name": "LED",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "rgb-led": {
+      "name": "RGB LED (common cathode)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led-bar-graph": {
+      "name": "LED bar graph",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "7segment": {
+      "name": "7-segment display",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "buzzer": {
+      "name": "Buzzer",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "resistor": {
+      "name": "Resistor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "pushbutton": {
+      "name": "Push button",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "pushbutton-6mm": {
+      "name": "Push button (small)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "slide-switch": {
+      "name": "Slide switch",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "potentiometer": {
+      "name": "Potentiometer",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "dip-switch-8": {
+      "name": "DIP switch (8)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "membrane-keypad": {
+      "name": "Keypad",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "analog-joystick": {
+      "name": "Joystick",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "slide-potentiometer": {
+      "name": "Slide potentiometer",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ky-040": {
+      "name": "Rotary encoder",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ks2e-m-dc5": {
+      "name": "Relay",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "photoresistor-sensor": {
+      "name": "Light sensor (LDR)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ntc-temperature-sensor": {
+      "name": "Temperature sensor (NTC)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "gas-sensor": {
+      "name": "Gas sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "flame-sensor": {
+      "name": "Flame sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "big-sound-sensor": {
+      "name": "Sound sensor (large)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "small-sound-sensor": {
+      "name": "Sound sensor (small)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "pir-motion-sensor": {
+      "name": "Motion sensor (PIR)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "tilt-switch": {
+      "name": "Tilt switch",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "heart-beat-sensor": {
+      "name": "Heartbeat sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hc-sr04": {
+      "name": "Ultrasonic distance (HC-SR04)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "dht22": {
+      "name": "Temperature and humidity (DHT22)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ir-receiver": {
+      "name": "Infrared receiver",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ir-remote": {
+      "name": "Infrared remote",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hx711": {
+      "name": "Load cell amplifier (HX711)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "rotary-dialer": {
+      "name": "Rotary phone dial",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "servo": {
+      "name": "Servo motor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "stepper-motor": {
+      "name": "Stepper motor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "biaxial-stepper": {
+      "name": "Two-hand stepper (clock)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "lcd1602": {
+      "name": "LCD 16x2",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "lcd2004": {
+      "name": "LCD 20x4",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ssd1306": {
+      "name": "OLED display (SSD1306)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "neopixel": {
+      "name": "NeoPixel LED",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led-ring": {
+      "name": "NeoPixel ring",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "neopixel-matrix": {
+      "name": "NeoPixel matrix",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ds1307": {
+      "name": "Real-time clock (DS1307)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "mpu6050": {
+      "name": "Accelerometer and gyro (MPU6050)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ir-led": {
+      "name": "Infrared LED (940 nm)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led-resistor": {
+      "name": "LED with built-in resistor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led-bicolor": {
+      "name": "Bi-colour LED (red/green)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "rgb-led-anode": {
+      "name": "RGB LED (common anode)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "traffic-light": {
+      "name": "Traffic-light module",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "laser-module": {
+      "name": "Laser module (KY-008)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "led-strip": {
+      "name": "NeoPixel strip (WS2812)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "max7219-matrix": {
+      "name": "LED matrix 8x8 (MAX7219)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "tm1637": {
+      "name": "4-digit display (TM1637)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "dc-motor": {
+      "name": "DC motor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "l298n": {
+      "name": "Motor driver (L298N)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "l9110": {
+      "name": "Motor driver (L9110)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "relay-module": {
+      "name": "Relay module (active low)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "relay-module-high": {
+      "name": "Relay module (active high)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "solenoid": {
+      "name": "Solenoid",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "vibration-motor": {
+      "name": "Vibration motor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "fan": {
+      "name": "Fan (5V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "water-pump": {
+      "name": "Water pump",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "stepper-28byj48": {
+      "name": "Stepper 28BYJ-48 (ULN2003)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "battery-9v": {
+      "name": "Battery (9V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "battery-aa4": {
+      "name": "Battery pack (4 x AA)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "lipo": {
+      "name": "LiPo cell (3.7V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "lm7805": {
+      "name": "Voltage regulator (LM7805, 5V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ams1117": {
+      "name": "Voltage regulator (AMS1117, 3.3V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "power-switch": {
+      "name": "Power switch",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "fuse": {
+      "name": "Fuse",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "power-module": {
+      "name": "Breadboard power module",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "lm35": {
+      "name": "Temperature sensor (LM35)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "tmp36": {
+      "name": "Temperature sensor (TMP36)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "uv-sensor": {
+      "name": "UV light sensor (GUVA-S12SD)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "rain-sensor": {
+      "name": "Rain sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "soil-moisture": {
+      "name": "Soil moisture sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "soil-moisture-capacitive": {
+      "name": "Soil moisture sensor (capacitive)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "water-level": {
+      "name": "Water level sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "mq135": {
+      "name": "Air quality sensor (MQ-135)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ir-obstacle": {
+      "name": "IR obstacle sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "line-sensor": {
+      "name": "Line tracker (TCRT5000)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hall-sensor": {
+      "name": "Hall sensor, digital (KY-003)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hall-analog": {
+      "name": "Hall sensor, analog (49E)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hall-module": {
+      "name": "Hall sensor module (KY-024)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "reed-switch": {
+      "name": "Reed switch",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "tilt-ball-switch": {
+      "name": "Tilt ball switch (SW-520D)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "force-sensor": {
+      "name": "Force sensor (FSR)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "flex-sensor": {
+      "name": "Flex sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "voltage-sensor": {
+      "name": "Voltage sensor (0-25 V)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "bmp280": {
+      "name": "Pressure and temperature (BMP280)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "bme280": {
+      "name": "Pressure, temperature, humidity (BME280)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "sht31": {
+      "name": "Temperature and humidity (SHT31)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "bh1750": {
+      "name": "Light sensor (BH1750)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "adxl345": {
+      "name": "Accelerometer (ADXL345)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hmc5883l": {
+      "name": "Compass (HMC5883L)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "qmc5883l": {
+      "name": "Compass (QMC5883L)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ina219": {
+      "name": "Current sensor (INA219)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "max30102": {
+      "name": "Pulse oximeter (MAX30102)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ds18b20": {
+      "name": "Temperature sensor (DS18B20)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hc-sr501": {
+      "name": "Motion sensor (HC-SR501)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "am312": {
+      "name": "Mini motion sensor (AM312)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hc-sr505": {
+      "name": "Mini motion sensor (HC-SR505)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "vibration-sensor": {
+      "name": "Vibration sensor (SW-420)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "knock-sensor": {
+      "name": "Knock sensor (KY-031)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "piezo-sensor": {
+      "name": "Piezo knock sensor",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "touch-sensor": {
+      "name": "Touch sensor (TTP223)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "zmpt101b": {
+      "name": "AC voltage sensor (ZMPT101B)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "acs712-5a": {
+      "name": "Current sensor (ACS712, 5 A)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "acs712-20a": {
+      "name": "Current sensor (ACS712, 20 A)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "acs712-30a": {
+      "name": "Current sensor (ACS712, 30 A)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "microphone": {
+      "name": "Microphone amplifier (MAX4466)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "74hc595": {
+      "name": "Shift register out (74HC595)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "74hc165": {
+      "name": "Shift register in (74HC165)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "cd4051": {
+      "name": "Analog multiplexer (CD4051)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "eeprom-24c32": {
+      "name": "EEPROM (24C32)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ds3231": {
+      "name": "Real-time clock (DS3231)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "pcf8574": {
+      "name": "I/O expander (PCF8574)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "ili9341": {
+      "name": "Colour TFT (ILI9341)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "microsd": {
+      "name": "microSD card",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "hc05": {
+      "name": "Bluetooth (HC-05)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "gps-neo6m": {
+      "name": "GPS (NEO-6M)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "rc522": {
+      "name": "RFID reader (RC522)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "nrf24l01": {
+      "name": "Radio (nRF24L01)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "breadboard-400": {
+      "name": "Breadboard, half size (400 points)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "breadboard-830": {
+      "name": "Breadboard, full size (830 points)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    },
+    "jumper-wire": {
+      "name": "Jumper wire (each)",
+      "price": null,
+      "shop": "",
+      "date": ""
+    }
+  }
+}
