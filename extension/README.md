@@ -73,4 +73,4 @@ Shibo is an independent project. It is not affiliated with Arduino or Wokwi. Par
 
 ## How it was made
 
-Shibo was designed and directed by its author and built with the help of AI coding assistants (Claude, by Anthropic), which wrote much of the code under the author's review and testing.
+Shibo was designed, directed and tested by me, with the code written using [Claude Code](https://claude.com/claude-code) (Anthropic) as an AI coding assistant.

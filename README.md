@@ -128,6 +128,10 @@ Tests run with Node's built-in runner, and Node 23 or newer is needed because th
 - The LCD model ignores custom characters and scrolling.
 - The MAX7219 shows its digit registers as matrix rows; its BCD decode mode for 7-segment digits is not drawn. An IR LED does not reach the infrared receiver.
 
+## How it was made
+
+Shibo was designed, directed and tested by me, with the code written using [Claude Code](https://claude.com/claude-code) (Anthropic) as an AI coding assistant.
+
 ## Credits and licence
 
 Shibo is MIT licensed. It builds on [avr8js](https://github.com/wokwi/avr8js) and [@wokwi/elements](https://github.com/wokwi/wokwi-elements) by Uri Shaked, both MIT. Shibo is an independent project and is not affiliated with Arduino or Wokwi. It contains no Wokwi proprietary code.
