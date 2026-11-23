@@ -2,7 +2,7 @@
   "name": "shibo",
   "displayName": "Shibo",
   "description": "Simulate Arduino circuits offline: drag parts, wire them, and run your real sketch before you buy anything.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "dagmawi-m",
   "private": true,
   "license": "MIT",
