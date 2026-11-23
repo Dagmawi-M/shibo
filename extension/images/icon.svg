@@ -1,11 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#14784f"/>
-  <!-- a chip on a bench, one pin wired to a lit LED -->
-  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="30" y="52" width="46" height="46" rx="6"/>
-    <path d="M42 52V40M53 52V40M64 52V40M42 98v12M53 98v12M64 98v12M30 64H18M30 75H18M30 86H18"/>
-    <path d="M76 75h14a8 8 0 0 0 8-8V52"/>
+  <!-- Shibo: the Ge'ez letter ሽ (first letter of ሽቦ, "wire") drawn as a wire on a circuit board,
+       with an LED symbol between its legs that doubles as a play button. Tilet band below. -->
+  <defs><clipPath id="r"><rect width="128" height="128" rx="28"/></clipPath></defs>
+  <g clip-path="url(#r)">
+    <rect width="128" height="128" fill="#10604a"/>
+    <g transform="translate(0,-1.5)">
+      <!-- LED leads (under the letter) -->
+      <path d="M46 74H57M75 74H82" stroke="#ff6b57" stroke-width="3.5" stroke-linecap="round"/>
+      <!-- the letter, one wire -->
+      <g fill="none" stroke="#f7f2e6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M38 22H90"/><path d="M56 22L66 37"/><path d="M44 92V57a20 20 0 0 1 40 0V92"/>
+      </g>
+      <!-- solder pads at the wire ends -->
+      <g fill="#0a4433" stroke="#f2b93b" stroke-width="4">
+        <circle cx="38" cy="22" r="6"/><circle cx="90" cy="22" r="6"/><circle cx="44" cy="93" r="6"/><circle cx="84" cy="93" r="6"/>
+      </g>
+      <!-- LED symbol / play -->
+      <path d="M58 66.5L71 74L58 81.5Z" fill="#ff6b57" stroke="#ff6b57" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M75.5 66V82" stroke="#ff6b57" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(0,109)"><rect width="128" height="19" fill="#0a4433"/><rect width="128" height="2" fill="#f2b93b"/><g fill="#e2503f"><path d="M4 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M16 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M28 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M40 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M52 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M64 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M76 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M88 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M100 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M112 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/><path d="M124 5.5l4.5 4.5-4.5 4.5-4.5-4.5z"/></g><g fill="#f2b93b"><path d="M10 8l2 2-2 2-2-2z"/><path d="M22 8l2 2-2 2-2-2z"/><path d="M34 8l2 2-2 2-2-2z"/><path d="M46 8l2 2-2 2-2-2z"/><path d="M58 8l2 2-2 2-2-2z"/><path d="M70 8l2 2-2 2-2-2z"/><path d="M82 8l2 2-2 2-2-2z"/><path d="M94 8l2 2-2 2-2-2z"/><path d="M106 8l2 2-2 2-2-2z"/><path d="M118 8l2 2-2 2-2-2z"/></g></g>
   </g>
-  <circle cx="98" cy="36" r="14" fill="#ffd166"/>
-  <g stroke="#ffd166" stroke-width="5" stroke-linecap="round"><path d="M98 10v6M120 36h-4M114 20l-4 4M82 20l4 4"/></g>
 </svg>
