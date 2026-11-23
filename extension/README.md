@@ -36,7 +36,7 @@ Already have a sketch? Open its folder and press the **Shibo** button in the sta
 
 ## Parts
 
-More than 130 parts, each with its picture:
+More than 130 parts, each with its picture. See them all in the [parts gallery](https://github.com/Dagmawi-M/shibo/tree/main/gallery).
 
 - **Boards:** Arduino Uno, Nano and Mega 2560, and the ATtiny85 (Digispark-style).
 - **Lights and sound:** LEDs in eight colours and three sizes, LED with built-in resistor, infrared LED, bi-colour LED, RGB LED (common cathode and common anode), traffic-light module, laser module, LED bar graph, 7-segment display, buzzer.

@@ -17,6 +17,10 @@
 
 ## Parts
 
+Every board and part has a picture in the **[parts gallery](gallery/README.md)**, grouped the same way as below.
+
+<p><a href="gallery/README.md"><img src="gallery/boards/uno.png" width="160" alt="Arduino Uno"><img src="gallery/sensors/hc-sr04.png" width="160" alt="Ultrasonic distance sensor"><img src="gallery/displays/lcd1602.png" width="160" alt="LCD 16x2"><img src="gallery/motors-and-switching/servo.png" width="160" alt="Servo motor"><img src="gallery/switches-and-knobs/membrane-keypad.png" width="160" alt="Keypad"></a></p>
+
 - **Boards:** Arduino Uno, Arduino Nano, Arduino Mega 2560 (all 70 pins, A0-A15, Serial to Serial3, external and pin-change interrupts, all six timers), ATtiny85 (Digispark-style, ATTinyCore at 16 MHz: P0-P5, ADC on P2-P5, PWM on P0/P1/P4, software Serial with TX on P0 and RX on P1).
 - **Lights and sound:** LED (red, green, blue, yellow, white, orange, pink, purple; 3, 5 and 10 mm), LED with built-in resistor, Infrared LED, Bi-colour LED, RGB LED (common cathode and common anode), Traffic-light module, Laser module (KY-008), LED bar graph, 7-segment display, Buzzer.
 - **Basics:** Resistor.
