@@ -2,7 +2,7 @@
   "name": "shibo",
   "displayName": "Shibo",
   "description": "Simulate Arduino circuits offline: drag parts, wire them, and run your real sketch before you buy anything.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "dagmawi-m",
   "private": true,
   "license": "MIT",
@@ -10,7 +10,7 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other",
+    "Visualization",
     "Education",
     "Testing"
   ],
@@ -24,7 +24,17 @@
     "breadboard",
     "iot",
     "maker",
-    "wiring"
+    "wiring",
+    "arduino simulator",
+    "circuit simulator",
+    "avr",
+    "nano",
+    "led",
+    "lcd",
+    "servo",
+    "serial monitor",
+    "offline",
+    "education"
   ],
   "main": "./dist/extension.js",
   "contributes": {

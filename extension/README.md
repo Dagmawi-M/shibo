@@ -2,6 +2,8 @@
 
 **Shibo** (ሽቦ, Amharic for "wire") is a circuit simulator inside VS Code. Place parts, wire them, and run your real Arduino sketch, before you buy anything. It works offline: your sketches and circuits never leave your computer.
 
+![The Shibo editor running a sketch that drives an LCD, an OLED and a servo](https://raw.githubusercontent.com/Dagmawi-M/shibo/main/extension/images/screenshot.png)
+
 ## Start in two minutes
 
 1. Click the **Shibo** icon in the Activity Bar (the left edge of VS Code).

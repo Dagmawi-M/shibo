@@ -53,14 +53,20 @@ refresh the shipped `prices.json`.
 
 ## Install
 
-Shibo is not on the VS Code Marketplace yet. To try it, build the extension package from source:
+Install **Shibo** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=dagmawi-m.shibo): open the Extensions panel in VS Code, search for "Shibo" and click **Install**. Or, from a terminal:
+
+```
+code --install-extension dagmawi-m.shibo
+```
+
+To build the extension package from source instead:
 
 ```
 git clone https://github.com/Dagmawi-M/shibo.git
 cd shibo
 npm install
 npm run package
-code --install-extension extension/shibo-0.1.1.vsix
+code --install-extension extension/shibo-0.1.2.vsix
 ```
 
 You also need [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) on your PATH with the AVR core:
