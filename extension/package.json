@@ -3,7 +3,7 @@
   "displayName": "Shibo",
   "description": "Simulate Arduino circuits offline: drag parts, wire them, and run your real sketch before you buy anything.",
   "version": "0.1.0",
-  "publisher": "shibo",
+  "publisher": "dagmawi-m",
   "private": true,
   "license": "MIT",
   "engines": {
@@ -67,7 +67,7 @@
     "viewsWelcome": [
       {
         "view": "shibo.home",
-        "contents": "Build a circuit, wire it, and run your real Arduino sketch. Nothing leaves your computer.\n[New Project](command:shibo.newProject)\n[Open Simulator for This Folder](command:shibo.open)\n[Open a Folder](command:vscode.openFolder)\nNew here? [Take the 2-minute tour](command:workbench.action.openWalkthrough?%22shibo.shibo%23shibo.start%22).\nSketches are compiled with arduino-cli. [How to install it](command:shibo.getArduinoCli)."
+        "contents": "Build a circuit, wire it, and run your real Arduino sketch. Nothing leaves your computer.\n[New Project](command:shibo.newProject)\n[Open Simulator for This Folder](command:shibo.open)\n[Open a Folder](command:vscode.openFolder)\nNew here? [Take the 2-minute tour](command:workbench.action.openWalkthrough?%22dagmawi-m.shibo%23shibo.start%22).\nSketches are compiled with arduino-cli. [How to install it](command:shibo.getArduinoCli)."
       }
     ],
     "menus": {

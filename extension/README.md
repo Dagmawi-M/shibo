@@ -58,7 +58,6 @@ Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colo
 
 - Boards: Arduino Uno and Nano. ESP32 and Raspberry Pi Pico are planned.
 - Its checks are wiring rules, not yet a full voltage and current calculation: it will not tell you a resistor has the wrong value.
-- Wires take a simple two-segment path and cannot be bent by hand yet.
 
 Shibo is an independent project. It is not affiliated with Arduino or Wokwi. Part drawings come from the open-source `@wokwi/elements` library (MIT).
 
