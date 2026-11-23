@@ -19,11 +19,14 @@ Already have a sketch? Open its folder and press the **Shibo** button in the sta
 - **Wire the easy way:** drag from one pin to another, or click one pin and then the other. The pin under the pointer is named, and the pins you can finish on light up.
 - **Change your mind:** right-click a wire or a part to remove it, or select it and press Delete. Undo and redo with Ctrl+Z and Ctrl+Shift+Z.
 - **Manage what is in the circuit:** a list of your components sits under the catalog; select or remove any of them there.
-- **Upload and run your real sketch:** **Upload & Run** compiles the sketch in the folder and runs it on an emulated ATmega328P. Save the sketch while it is running and it uploads again by itself.
+- **Upload and run your real sketch:** **Upload & Run** compiles the sketch in the folder and runs it on an emulated copy of the chip on your board. Save the sketch while it is running and it uploads again by itself.
 - **Use it like the real thing:** press buttons, turn knobs, flip switches, type into the serial monitor.
 - **Set what sensors sense:** each sensor has a slider for light, temperature, gas, sound and so on.
 - **See dimming:** LEDs driven with `analogWrite` are drawn at their brightness.
 - **Catch mistakes before they cost you:** an LED with no resistor, a button left floating without a pull-up, a relay coil driven straight from a pin, wires to pins that do not exist, two outputs shorted together, a sensor left without power.
+- **Check the electrics:** with ngspice installed, Shibo also checks pin currents, LED currents and voltage levels while the sketch runs.
+- **Know what to buy:** **Parts list** shows everything the circuit needs, with your own prices, and exports it as CSV or Markdown.
+- **Share a circuit:** **Share** copies a link that holds the whole project. Nothing is uploaded anywhere.
 - **Start from a template:** an empty canvas offers Blink, Button and LED, Night light, or Empty.
 - **Change any part's settings:** click a part to rename it, pick an LED's colour, choose how an LCD is wired, or rotate it (R). Click a wire to recolour it.
 - **Move around:** drag the background to pan, **Fit** to see everything, arrow keys to nudge a part.
@@ -33,20 +36,24 @@ Already have a sketch? Open its folder and press the **Shibo** button in the sta
 
 ## Parts
 
-- **Boards:** Arduino Uno, Arduino Nano.
-- **Lights and sound:** LED, RGB LED, LED bar graph, 7-segment display, Buzzer.
+More than 130 parts, each with its picture:
+
+- **Boards:** Arduino Uno, Nano and Mega 2560, and the ATtiny85 (Digispark-style).
+- **Lights and sound:** LEDs in eight colours and three sizes, LED with built-in resistor, infrared LED, bi-colour LED, RGB LED (common cathode and common anode), traffic-light module, laser module, LED bar graph, 7-segment display, buzzer.
 - **Basics:** Resistor.
-- **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
-- **Motors and switching:** Relay, Servo motor, Stepper motor, Two-hand stepper (clock).
-- **Sensors:** Light sensor (LDR), Temperature sensor (NTC), Gas sensor, Flame sensor, Sound sensor (large), Sound sensor (small), Motion sensor (PIR), Tilt switch, Heartbeat sensor, Ultrasonic distance (HC-SR04), Temperature and humidity (DHT22), Infrared receiver, Load cell amplifier (HX711), Accelerometer and gyro (MPU6050).
-- **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307).
-- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix.
+- **Switches and knobs:** Push buttons, slide switch, potentiometer, slide potentiometer, DIP switch, keypad, joystick, rotary encoder.
+- **Motors and switching:** Relay and relay modules, servo motor, stepper motors (including the 28BYJ-48 with ULN2003), DC motor, motor drivers (L298N, L9110), fan, water pump, vibration motor, solenoid.
+- **Power:** 9 V battery, 4 x AA pack, LiPo cell, voltage regulators (LM7805, AMS1117), power switch, fuse, breadboard power module.
+- **Sensors (more than 50):** light (LDR, BH1750), temperature (NTC, LM35, TMP36, DS18B20), temperature and humidity (DHT22, SHT31, BME280), pressure (BMP280), gas and air quality (MQ-135), flame, sound, motion (PIR, HC-SR501, AM312, HC-SR505), ultrasonic distance (HC-SR04), tilt, knock and vibration, touch (TTP223), Hall and reed, force and flex, soil moisture, rain, water level, UV, IR obstacle and line tracker, heartbeat and pulse oximeter (MAX30102), accelerometer and gyro (MPU6050, ADXL345), compass (HMC5883L, QMC5883L), current and voltage (INA219, ACS712, ZMPT101B), load cell amplifier (HX711), microphone amplifier (MAX4466), infrared receiver.
+- **Modules:** Infrared remote, rotary phone dial, real-time clocks (DS1307, DS3231), EEPROM (24C32), I/O expander (PCF8574), shift registers (74HC595, 74HC165), analog multiplexer (CD4051), microSD card, Bluetooth (HC-05), GPS (NEO-6M), RFID reader (RC522), radio (nRF24L01).
+- **Displays:** LCD 16x2 and 20x4, OLED (SSD1306), NeoPixel LED, ring, matrix and strip, LED matrix 8x8 (MAX7219), 4-digit display (TM1637), colour TFT (ILI9341).
 
 Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colours on NeoPixels. Sensors that work by timing (ultrasonic, DHT22, infrared) answer with the same pulses the real ones send, so the usual libraries and `pulseIn` work.
 
 ## Needs
 
 - [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) on your PATH, with the AVR core: `arduino-cli core install arduino:avr`.
+- Optional: [ngspice](https://ngspice.sourceforge.io/) on your PATH (or set `SHIBO_NGSPICE` to its path) for the voltage and current checks.
 
 ## Commands
 
@@ -58,8 +65,9 @@ Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colo
 
 ## Limits in this version
 
-- Boards: Arduino Uno and Nano. ESP32 and Raspberry Pi Pico are planned.
-- Its checks are wiring rules, not yet a full voltage and current calculation: it will not tell you a resistor has the wrong value.
+- Boards are AVR only for now: Uno, Nano, Mega 2560 and ATtiny85 (which needs ATTinyCore). ESP32 and Raspberry Pi Pico are planned.
+- Voltage and current checks need ngspice installed. Without it, Shibo checks the wiring rules only.
+- It was built and tested on Linux. Reports from Windows and macOS are welcome.
 
 Shibo is an independent project. It is not affiliated with Arduino or Wokwi. Part drawings come from the open-source `@wokwi/elements` library (MIT).
 

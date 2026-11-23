@@ -17,20 +17,16 @@
 
 ## Parts
 
-- **Boards:** Arduino Uno, Arduino Nano.
-- **Lights and sound:** LED (red, green, blue, yellow, white, orange, pink, purple; 3, 5 and 10 mm), LED with built-in resistor, Infrared LED, Bi-colour LED, RGB LED (common cathode and common anode), Traffic-light module, Laser module (KY-008), LED bar graph, 7-segment display, Buzzer.
 - **Boards:** Arduino Uno, Arduino Nano, Arduino Mega 2560 (all 70 pins, A0-A15, Serial to Serial3, external and pin-change interrupts, all six timers), ATtiny85 (Digispark-style, ATTinyCore at 16 MHz: P0-P5, ADC on P2-P5, PWM on P0/P1/P4, software Serial with TX on P0 and RX on P1).
-- **Lights and sound:** LED, RGB LED, LED bar graph, 7-segment display, Buzzer.
+- **Lights and sound:** LED (red, green, blue, yellow, white, orange, pink, purple; 3, 5 and 10 mm), LED with built-in resistor, Infrared LED, Bi-colour LED, RGB LED (common cathode and common anode), Traffic-light module, Laser module (KY-008), LED bar graph, 7-segment display, Buzzer.
 - **Basics:** Resistor.
 - **Switches and knobs:** Push button, Push button (small), Slide switch, Potentiometer, DIP switch (8), Keypad, Joystick, Slide potentiometer, Rotary encoder.
 - **Motors and switching:** Relay, Relay module (active low, active high), Servo motor, Stepper motor, Two-hand stepper (clock), Stepper 28BYJ-48 (ULN2003), DC motor, Motor driver (L298N), Motor driver (L9110), Fan (5V), Water pump, Vibration motor, Solenoid.
 - **Power:** Battery (9V), Battery pack (4 x AA), LiPo cell (3.7V), Voltage regulator (LM7805, 5V), Voltage regulator (AMS1117, 3.3V), Power switch, Fuse, Breadboard power module.
 - **Sensors:** Light sensor (LDR), Temperature sensor (NTC), Gas sensor, Flame sensor, Sound sensor (large), Sound sensor (small), Motion sensor (PIR), Tilt switch, Heartbeat sensor, Ultrasonic distance (HC-SR04), Temperature and humidity (DHT22), Infrared receiver, Load cell amplifier (HX711), Accelerometer and gyro (MPU6050).
 - **More sensors:** Temperature sensor (LM35), Temperature sensor (TMP36), UV light sensor (GUVA-S12SD), Rain sensor, Soil moisture sensor, Soil moisture sensor (capacitive), Water level sensor, Air quality sensor (MQ-135), IR obstacle sensor, Line tracker (TCRT5000), Hall sensor, digital (KY-003), Hall sensor, analog (49E), Hall sensor module (KY-024), Reed switch, Tilt ball switch (SW-520D), Force sensor (FSR), Flex sensor, Voltage sensor (0-25 V), Pressure and temperature (BMP280), Pressure, temperature, humidity (BME280), Temperature and humidity (SHT31), Light sensor (BH1750), Accelerometer (ADXL345), Compass (HMC5883L), Compass (QMC5883L), Current sensor (INA219), Pulse oximeter (MAX30102), Temperature sensor (DS18B20), Motion sensor (HC-SR501), Mini motion sensor (AM312), Mini motion sensor (HC-SR505), Vibration sensor (SW-420), Knock sensor (KY-031), Piezo knock sensor, Touch sensor (TTP223), AC voltage sensor (ZMPT101B), Current sensor (ACS712, 5 A), Current sensor (ACS712, 20 A), Current sensor (ACS712, 30 A), Microphone amplifier (MAX4466).
-- **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307).
-- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, NeoPixel strip (WS2812, chainable DOUT to DIN), LED matrix 8x8 (MAX7219, chainable, works with LedControl), 4-digit display (TM1637, works with TM1637Display).
 - **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307), Real-time clock (DS3231), EEPROM (24C32), I/O expander (PCF8574), Shift register out (74HC595), Shift register in (74HC165), Analog multiplexer (CD4051), microSD card, Bluetooth (HC-05), GPS (NEO-6M), RFID reader (RC522), Radio (nRF24L01).
-- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, Colour TFT (ILI9341).
+- **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, NeoPixel strip (WS2812, chainable DOUT to DIN), LED matrix 8x8 (MAX7219, chainable, works with LedControl), 4-digit display (TM1637, works with TM1637Display), Colour TFT (ILI9341).
 
 Boards so far: Arduino Uno, Nano, Mega 2560 and ATtiny85. The ATtiny85 needs ATTinyCore (`arduino-cli core install ATTinyCore:avr` with its board-manager URL) and builds as `ATTinyCore:avr:attinyx5micr:sketchclock=16pll`; USB (V-USB/DigiKeyboard) is not simulated. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
 
@@ -127,8 +123,8 @@ Tests run with Node's built-in runner, and Node 23 or newer is needed because th
 
 ## Limits today
 
-- Its checks are wiring rules, not a full voltage and current calculation.
-- Wires take a simple path and cannot be bent by hand.
+- Voltage and current checks need ngspice installed (on your PATH, or set `SHIBO_NGSPICE` to its path). Without it, Shibo checks the wiring rules only.
+- Boards are AVR only for now. ESP32 and Raspberry Pi Pico are planned.
 - The LCD model ignores custom characters and scrolling.
 - The MAX7219 shows its digit registers as matrix rows; its BCD decode mode for 7-segment digits is not drawn. An IR LED does not reach the infrared receiver.
 
