@@ -61,3 +61,7 @@ Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colo
 - Wires take a simple two-segment path and cannot be bent by hand yet.
 
 Shibo is an independent project. It is not affiliated with Arduino or Wokwi. Part drawings come from the open-source `@wokwi/elements` library (MIT).
+
+## How it was made
+
+Shibo was designed and directed by its author and built with the help of AI coding assistants (Claude, by Anthropic), which wrote much of the code under the author's review and testing.
