@@ -96,6 +96,8 @@ export function runCli(c: CompilerRun, args: string[], o: { signal?: AbortSignal
     if (o.signal?.aborted) return finish(false);
     const child = spawn(c.cli, [...c.args, ...args], { env: { ...process.env, ...c.env }, signal: o.signal, windowsHide: true });
     const hear = (b: Buffer) => { const s = b.toString(); out += s; o.onOutput?.(s); };
+    // A stopped program may leave helpers behind that still hold its output open: do not wait for them.
+    o.signal?.addEventListener('abort', () => { child.stdout.destroy(); child.stderr.destroy(); }, { once: true });
     child.stdout.on('data', hear); child.stderr.on('data', hear);
     child.on('error', (err: NodeJS.ErrnoException) => finish(false, err.code === 'ENOENT'));
     child.on('close', (code) => finish(code === 0));
