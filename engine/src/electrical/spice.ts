@@ -40,6 +40,29 @@ function envFor(bin: string): NodeJS.ProcessEnv {
   return env;
 }
 
+// ngspice does not stop when its pipes close: left alone after the program that
+// started it has gone, it spins on one processor core for ever. So every solver
+// that is running is stopped when this program ends, however it ends.
+const running = new Set<ChildProcess>();
+process.on('exit', () => { for (const p of running) { try { p.kill(); } catch { /* already gone */ } } });
+
+/**
+ * Stops a solver if this program is killed outright, when no 'exit' handler
+ * runs. A small helper waits on a pipe that only this program holds open; the
+ * pipe closing is how it learns that the program has gone. Returns how to send
+ * the helper away once the solver has stopped by itself. (Not on Windows,
+ * which has no shell to run it with.)
+ */
+function guard(pid: number): () => void {
+  if (process.platform === 'win32') return () => {};
+  let w: ChildProcess;
+  try { w = spawn('/bin/sh', ['-c', 'cat >/dev/null; kill "$0" 2>/dev/null', String(pid)], { stdio: ['pipe', 'ignore', 'ignore'] }); } catch { return () => {}; }
+  w.on('error', () => {});
+  w.stdin!.on('error', () => {});
+  w.unref(); (w.stdin as unknown as { unref?: () => void }).unref?.();
+  return () => { w.kill(); w.stdin!.destroy(); };
+}
+
 export class Spice {
   private bin: string | null;
   private proc: ChildProcess | null = null;
@@ -71,7 +94,9 @@ export class Spice {
     for (const io of [p.stdin, p.stdout, p.stderr]) (io as unknown as { unref?: () => void } | null)?.unref?.();
     p.stdin!.on('error', () => {});
     p.on('error', () => { this.dead = NO_SPICE; this.fail(); });
-    p.on('exit', () => { if (this.proc === p) { this.proc = null; this.fail(); } });
+    running.add(p);
+    const unguard = p.pid ? guard(p.pid) : () => {};
+    p.on('exit', () => { running.delete(p); unguard(); if (this.proc === p) { this.proc = null; this.fail(); } });
     return true;
   }
 
