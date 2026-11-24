@@ -71,12 +71,22 @@ export type OutMsg =
 
 /** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
 type Build = (dir: string, board: string) => Promise<BuildResult>;
-interface Run { engine: Engine; chip: ChipBackend; circuit: Circuit; electrical: Electrical; inst: Instruments; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
+interface Run {
+  engine: Engine; chip: ChipBackend; circuit: Circuit; electrical: Electrical; inst: Instruments; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number;
+  /** When each control (a button, a knob) was last set, in simulated time, and a newer value waiting its turn. */
+  held: Map<string, number>; later: Map<string, { part: string; name: string; value: number }>;
+}
 
 /** A build that could not be made because something is missing from the computer, not wrong in the sketch. */
 class NeedError extends Error { need: Need; constructor(need: Need) { super(need.message); this.need = need; } }
 
 const MS = 1e6;
+/**
+ * A control keeps each value for at least this much simulated time before the
+ * next one is applied. A click that is over before the simulation has moved on
+ * at all would otherwise never be seen by the sketch.
+ */
+const HOLD_MS = 30;
 const MAX_STEP_MS = 50;           // a stalled host must not make the simulation leap ahead
 const FILE = 'shibo.json';
 const MAX_SERIAL = 4096;          // bytes accepted in one message from the page
@@ -148,7 +158,7 @@ export class Session {
         case 'prices': this.send({ t: 'prices', book: loadPrices(this.dir), file: path.join(this.dir, PRICES_FILE) }); break;
         case 'setPrice': this.send({ t: 'prices', book: savePrice(this.dir, m.key, m.entry, m.currency), file: path.join(this.dir, PRICES_FILE) }); break;
         case 'exportBom': this.send({ t: 'bomExported', path: exportBom(this.dir, this.project, m.format === 'md' ? 'md' : 'csv') }); break;
-        case 'control': this.run?.circuit.setControl(String(m.part), String(m.name), Number(m.value)); break;
+        case 'control': this.control(String(m.part), String(m.name), Number(m.value)); break;
         case 'shareInfo': this.send({ t: 'shareInfo', project: this.project, sketch: this.sketchText() }); break;
         case 'openShared': this.openShared(m.project, m.sketch, m.embed === true); break;
         case 'serial': {
@@ -304,7 +314,7 @@ export class Session {
         if (this.run) this.run.serial = '';       // a replay while scrubbing prints what was already printed
         this.flush(); this.sendStatus();
       });
-      const run: Run = { engine, chip, circuit, electrical, inst, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0 };
+      const run: Run = { engine, chip, circuit, electrical, inst, serial: '', lastOutputs: '', lastProblems: '', lastStatusMs: 0, held: new Map(), later: new Map() };
       chip.onSerial((b) => { run.serial += String.fromCharCode(b); });
       this.run = run;
       electrical.onReport((r) => { if (this.run === run) { this.sendElectrical(r); this.flush(); } });
@@ -329,6 +339,16 @@ export class Session {
   }
 
   /** The host calls this with the wall time that passed; the engine decides what that means. */
+  /** Set a button, knob or sensor value, or keep it for later if the last value has not been held long enough yet. */
+  private control(part: string, name: string, value: number): void {
+    const run = this.run;
+    if (!run) return;
+    const key = `${part}\n${name}`, since = run.held.get(key);
+    if (since !== undefined && run.engine.now - since < HOLD_MS * MS) { run.later.set(key, { part, name, value }); return; }
+    run.later.delete(key); run.held.set(key, run.engine.now);
+    run.circuit.setControl(part, name, value);
+  }
+
   tick(wallMs: number): void {
     const run = this.run;
     if (!run || this.disposed || !(wallMs > 0) || run.inst.paused) return;
@@ -339,6 +359,7 @@ export class Session {
       this.send({ t: 'error', message: `the simulation stopped: ${(err as Error).message}` });
       return;
     }
+    for (const c of [...run.later.values()]) this.control(c.part, c.name, c.value);      // values that waited their turn
     run.engine.log.length = 0;         // the live view shows state, not the event log
     run.circuit.audit();
     run.inst.afterTick();
