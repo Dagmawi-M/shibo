@@ -52,8 +52,19 @@
         "icon": "$(add)"
       },
       {
+        "command": "shibo.checkSetup",
+        "title": "Check Setup",
+        "category": "Shibo",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "shibo.getArduinoCli",
-        "title": "How to Install arduino-cli",
+        "title": "How to Install arduino-cli Yourself",
+        "category": "Shibo"
+      },
+      {
+        "command": "shibo.removeCompiler",
+        "title": "Remove Downloaded Compiler",
         "category": "Shibo"
       }
     ],
@@ -77,7 +88,7 @@
     "viewsWelcome": [
       {
         "view": "shibo.home",
-        "contents": "Build a circuit, wire it, and run your real Arduino sketch. Nothing leaves your computer.\n[New Project](command:shibo.newProject)\n[Open Simulator for This Folder](command:shibo.open)\n[Open a Folder](command:vscode.openFolder)\nNew here? [Take the 2-minute tour](command:workbench.action.openWalkthrough?%22dagmawi-m.shibo%23shibo.start%22).\nSketches are compiled with arduino-cli. [How to install it](command:shibo.getArduinoCli)."
+        "contents": "Build a circuit, wire it, and run your real Arduino sketch. Nothing leaves your computer.\n[New Project](command:shibo.newProject)\n[Open Simulator for This Folder](command:shibo.open)\n[Open a Folder](command:vscode.openFolder)\nNew here? [Take the 2-minute tour](command:workbench.action.openWalkthrough?%22dagmawi-m.shibo%23shibo.start%22).\nSketches need the Arduino compiler. [Check your setup](command:shibo.checkSetup)."
       }
     ],
     "menus": {
@@ -121,6 +132,17 @@
             ]
           },
           {
+            "id": "compiler",
+            "title": "Get the compiler",
+            "description": "Shibo compiles your sketch with the Arduino compiler. If it is not on this computer yet, Shibo can download it for you (about 80 MB, one time). After that everything works offline.\n[Check Setup](command:shibo.checkSetup)",
+            "media": {
+              "markdown": "media/tour-compiler.md"
+            },
+            "completionEvents": [
+              "onContext:shibo.compilerReady"
+            ]
+          },
+          {
             "id": "run",
             "title": "Run it",
             "description": "The simulator opens beside your sketch. Press **Run**, then click the parts: buttons press, knobs turn, sensors have sliders.\n[Open Simulator](command:shibo.open)",
@@ -141,7 +163,18 @@
           }
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Shibo",
+      "properties": {
+        "shibo.arduinoCli": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Path to the arduino-cli program to use. Leave empty to let Shibo find it."
+        }
+      }
+    }
   },
   "icon": "images/icon.png",
   "galleryBanner": {
@@ -161,5 +194,10 @@
   "homepage": "https://github.com/Dagmawi-M/shibo#readme",
   "bugs": {
     "url": "https://github.com/Dagmawi-M/shibo/issues"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
   }
 }

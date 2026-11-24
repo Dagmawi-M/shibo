@@ -6,7 +6,10 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { Session, type InMsg } from '../../engine/src/session.ts';
-import { buildSketch } from '../../engine/src/build.ts';
+import { Toolchain } from '../../engine/src/toolchain.ts';
+import type { Where } from '../../engine/src/compiler.ts';
+import type { SetupOptions } from '../../engine/src/setup.ts';
+import { checkSetup, inTerminal, progressNote, removeDownloaded, tellReady } from './setup-ui.ts';
 import { createProject, folderName, folderKind, templates } from '../../engine/src/templates.ts';
 
 const TICK_MS = 16;
@@ -14,8 +17,18 @@ const panels = new Map<string, vscode.WebviewPanel>();
 
 const REOPEN = 'shibo.openAfterReload';
 
+/** For tests only: stand-ins for this computer and for Arduino's download server. */
+export const testing: { toolchain?: { where?: Where; setup?: SetupOptions } } = {};
+
 export function activate(context: vscode.ExtensionContext): void {
   const here = () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+  // One toolchain for every simulator panel: the compiler Shibo downloads lives in the extension's own storage.
+  const chosen = () => vscode.workspace.getConfiguration('shibo').get<string>('arduinoCli') || undefined;
+  const toolchain = new Toolchain({ ownDir: path.join(context.globalStorageUri.fsPath, 'compiler'), cacheDir: path.join(context.globalStorageUri.fsPath, 'build'), setting: chosen, ...testing.toolchain });
+  void tellReady(toolchain);
+  context.subscriptions.push(vscode.commands.registerCommand('shibo.checkSetup', () => checkSetup(toolchain, chosen)));
+  context.subscriptions.push(vscode.commands.registerCommand('shibo.removeCompiler', () => removeDownloaded(toolchain)));
 
   context.subscriptions.push(vscode.commands.registerCommand('shibo.open', async () => {
     let dir = here();
@@ -30,7 +43,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (go) await vscode.commands.executeCommand('shibo.newProject', dir);
       return;
     }
-    open(context, dir);
+    open(context, toolchain, dir);
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('shibo.newProject', async (inside?: unknown) => {
@@ -66,11 +79,11 @@ export function activate(context: vscode.ExtensionContext): void {
   if (reopen && reopen === here()) {
     void context.globalState.update(REOPEN, undefined);
     const sketch = path.join(reopen, `${path.basename(reopen)}.ino`);
-    void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(sketch)).then(() => open(context, reopen));
+    void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(sketch)).then(() => open(context, toolchain, reopen));
   }
 }
 
-function open(context: vscode.ExtensionContext, dir: string): void {
+function open(context: vscode.ExtensionContext, toolchain: Toolchain, dir: string): void {
   const existing = panels.get(dir);
   if (existing) { existing.reveal(); return; }
 
@@ -79,15 +92,31 @@ function open(context: vscode.ExtensionContext, dir: string): void {
     { enableScripts: true, localResourceRoots: [appRoot], retainContextWhenHidden: true });
   panels.set(dir, panel);
 
-  const cache = path.join(context.globalStorageUri.fsPath, 'build');
-  const session = new Session({ build: (d, b) => buildSketch(d, b, cache), watch: true });
+  const session = new Session({ toolchain, watch: true });
   const title = panel.title;
   let dirty = false;
+  let note: ReturnType<typeof progressNote> | null = null;
   session.onMessage((m) => {
     if (m.t === 'project' || m.t === 'dirty') { dirty = m.dirty; panel.title = dirty ? `${title} ●` : title; }
     // A sketch Shibo just wrote: show it beside the circuit so it can be edited straight away.
     if (m.t === 'guideCreated') void vscode.env.openExternal(vscode.Uri.file(m.path));
     if (m.t === 'sketchCreated') void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(m.path), vscode.ViewColumn.One);
+    // A run that failed for want of something on the computer: say so where the sketch is being written, too.
+    if (m.t === 'error' && m.fix) {
+      const choices = m.fixKind === 'compiler' ? [m.fix, 'Install it myself'] : [m.fix];
+      void vscode.window.showErrorMessage(m.message, ...choices).then((answer) => {
+        if (answer === m.fix) void session.handle({ t: 'fix' });
+        else if (answer) void vscode.commands.executeCommand('shibo.getArduinoCli');
+      });
+    } else if (m.t === 'error' && m.command) {
+      const command = m.command;
+      void vscode.window.showErrorMessage(m.message, 'Put the command in a terminal').then((answer) => { if (answer) inTerminal(command); });
+    }
+    // A fix under way shows VS Code's own progress as well as the page's, with Cancel in both.
+    if (m.t === 'setup') {
+      if (m.state === 'working') { note ??= progressNote('Shibo setup', () => void session.handle({ t: 'cancelFix' })); note.report(m); }
+      else { note?.close(); note = null; void tellReady(toolchain); }
+    }
     void panel.webview.postMessage(m);
   });
   panel.webview.onDidReceiveMessage((m: InMsg) => {
@@ -104,7 +133,7 @@ function open(context: vscode.ExtensionContext, dir: string): void {
   }, TICK_MS);
 
   panel.onDidDispose(async () => {
-    clearInterval(timer); panels.delete(dir);
+    clearInterval(timer); panels.delete(dir); note?.close();
     // A closed panel cannot be reopened as it was, so offer to keep the work.
     if (dirty) {
       const answer = await vscode.window.showWarningMessage(`Shibo: the circuit in ${path.basename(dir)} has unsaved changes.`, 'Save', 'Discard');

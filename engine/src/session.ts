@@ -59,8 +59,8 @@ export type OutMsg =
   | { t: 'dirty'; dirty: boolean }
   /** Voltages and currents from the circuit solver: per wire (in project order) and a status per part. */
   | { t: 'electrical'; state: Report['state']; reason?: string; wires: Report['wires']; parts: Report['parts'] }
-  /** `fix` is the label of a button that puts the error right; `command` is one the person runs themselves. */
-  | { t: 'error'; message: string; fix?: string; command?: string }
+  /** `fix` is the label of a button that puts the error right (`fixKind` says what it installs); `command` is one the person runs themselves. */
+  | { t: 'error'; message: string; fix?: string; fixKind?: Fix['kind']; command?: string }
   /** How a fix is getting on: what it is doing and, when it can be measured, how far along (0 to 1). */
   | { t: 'setup'; state: 'working' | 'done' | 'failed' | 'cancelled'; text: string; fraction?: number }
   | { t: 'shareInfo'; project: Project; sketch: string | null }
@@ -176,7 +176,7 @@ export class Session {
     } catch (err) {
       const need = err instanceof NeedError ? err.need : null;
       if (need?.fix) this.offer = need.fix;
-      this.send({ t: 'error', message: (err as Error).message, ...(need?.label ? { fix: need.label } : {}), ...(need?.command ? { command: need.command } : {}) });
+      this.send({ t: 'error', message: (err as Error).message, ...(need?.fix && need.label ? { fix: need.label, fixKind: need.fix.kind } : {}), ...(need?.command ? { command: need.command } : {}) });
     }
   }
 

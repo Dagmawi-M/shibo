@@ -7,11 +7,13 @@ import Module from 'node:module';
 import { mkdtempSync, mkdirSync, writeFileSync, cpSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createProject } from '../src/templates.ts';
+import { makeRig, theirs, type Rig } from './helpers/setup-rig.ts';
 
 const require = createRequire(import.meta.url);
 const built = new URL('../../extension/dist/extension.js', import.meta.url).pathname;
 
-function harness(dir: string) {
+function harness(dir: string, opts: { toolchain?: object; settings?: Record<string, unknown> } = {}) {
   const commands: Record<string, (...args: any[]) => Promise<void>> = {};
   const posted: any[] = []; let receive: (m: any) => void = () => {}; let dispose: () => void = () => {};
   const panel = {
@@ -21,19 +23,24 @@ function harness(dir: string) {
     onDidDispose: (cb: any) => { dispose = cb; }, dispose() { dispose(); },
   };
   let created = 0; const warnings: string[] = []; const errors: string[] = []; const executed: any[][] = []; const views: string[] = [];
-  const answers: { name?: string; template?: string; parent?: string; info?: string } = {}; const asked: string[] = [];
+  const answers: { name?: string; template?: string; parent?: string; info?: string; pick?: (items: any[]) => any; error?: (text: string, choices: string[]) => string | undefined; warn?: string } = {}; const asked: string[] = [];
+  const picks: any[][] = []; const errorChoices: string[][] = []; const progress: any[] = []; const cancels: (() => void)[] = []; const terminals: any[] = [];
   const statusBar: any = { show() { statusBar.shown = true; }, hide() { statusBar.shown = false; }, dispose() {} };
   const state = new Map<string, unknown>();
   const vscode = {
     Uri: { joinPath: (base: any, ...p: string[]) => ({ fsPath: path.join(base.fsPath, ...p) }), file: (f: string) => ({ fsPath: f }), parse: (u: string) => ({ url: u }) },
     ViewColumn: { Beside: 2, One: 1 },
-    workspace: { workspaceFolders: [{ uri: { fsPath: dir } }] },
+    workspace: { workspaceFolders: [{ uri: { fsPath: dir } }], getConfiguration: () => ({ get: (k: string) => opts.settings?.[k] }) },
+    ProgressLocation: { Notification: 15 },
     window: { createWebviewPanel: () => { created++; return panel; }, showOpenDialog: async () => (answers.parent ? [{ fsPath: answers.parent }] : undefined),
-      showInputBox: async () => answers.name, showQuickPick: async (items: any[]) => items.find((i) => i.id === answers.template),
-      showErrorMessage: async (text: string) => { errors.push(text); }, showInformationMessage: async (text: string) => { asked.push(text); return answers.info; },
+      showInputBox: async () => answers.name,
+      showQuickPick: async (items: any[]) => { if (answers.pick) { picks.push(items); return answers.pick(items); } return items.find((i) => i.id === answers.template); },
+      withProgress: async (_o: any, task: any) => task({ report: (r: any) => progress.push(r) }, { isCancellationRequested: false, onCancellationRequested: (cb: () => void) => { cancels.push(cb); return { dispose() {} }; } }),
+      createTerminal: (o: any) => { const t = { name: o?.name, shown: false, sent: [] as any[], show() { t.shown = true; }, sendText(text: string, run?: boolean) { t.sent.push([text, run]); } }; terminals.push(t); return t; },
+      showErrorMessage: async (text: string, ...choices: string[]) => { errors.push(text); errorChoices.push(choices); return answers.error?.(text, choices); }, showInformationMessage: async (text: string) => { asked.push(text); return answers.info; },
       registerTreeDataProvider: (id: string) => { views.push(id); return { dispose() {} }; },
       createStatusBarItem: () => statusBar,
-      showWarningMessage: async (text: string, ...choices: string[]) => { warnings.push(text); return choices.includes('Save') ? 'Save' : undefined; } },
+      showWarningMessage: async (text: string, ...choices: any[]) => { warnings.push(text); return choices.includes('Save') ? 'Save' : choices.find((c) => c === answers.warn); } },
     commands: { registerCommand: (id: string, fn: any) => { commands[id] = fn; return { dispose() {} }; }, executeCommand: async (id: string, ...args: any[]) => { executed.push([id, ...args]); if (commands[id]) await (commands[id] as any)(...args); } },
     StatusBarAlignment: { Left: 1 }, env: { openExternal: async () => true },
   };
@@ -44,9 +51,10 @@ function harness(dir: string) {
   (Module as any)._load = load;
   const storage = mkdtempSync(path.join(tmpdir(), 'shibo-x-'));
   const context = { subscriptions: [], extensionUri: { fsPath: path.dirname(path.dirname(built)) }, globalStorageUri: { fsPath: storage }, globalState: { get: (k: string) => state.get(k), update: async (k: string, v: unknown) => { state.set(k, v); } } };
+  if (opts.toolchain) ext.testing.toolchain = opts.toolchain;
   ext.activate(context);
   const wait = async (pred: () => boolean, what: string, ms = 60000) => { const t = Date.now(); while (!pred()) { if (Date.now() - t > ms) throw new Error('timed out: ' + what + '; got ' + posted.map((m) => m.t).join(',')); await new Promise((r) => setTimeout(r, 50)); } };
-  return { asked, commands, posted, panel, send: (m: any) => receive(m), wait, created: () => created, ext, warnings, errors, executed, views, answers, statusBar, state, context, activateAgain: () => ext.activate(context) };
+  return { picks, errorChoices, progress, cancels, terminals, storage, asked, commands, posted, panel, send: (m: any) => receive(m), wait, created: () => created, ext, warnings, errors, executed, views, answers, statusBar, state, context, activateAgain: () => ext.activate(context) };
 }
 
 test('the extension opens a panel, relays messages, runs, and cleans up', async () => {
@@ -149,4 +157,121 @@ test('Open on a folder full of other things offers a new project inside it inste
     assert.equal(h.created(), 1); assert.deepEqual(h.asked, []);
     h.panel.dispose();
   } finally { process.env.HOME = before; }
+});
+
+// ---------- guided setup ----------
+const posix = process.platform !== 'win32';
+/** The extension's toolchain, able to see only what the test put there. */
+const isolated = (rig: Rig, pathDirs = '') => ({ setup: rig.setup, where: { env: { PATH: pathDirs }, home: path.join(rig.dir, 'no-home'), platform: 'linux' } });
+const labels = (items: any[]) => items.map((i) => i.label.replace(/^\$\([a-z-]+\) /, ''));
+
+test('a run with no compiler offers the download in VS Code too, and the sketch runs once it is in', { skip: !posix }, async () => {
+  const rig = await makeRig();
+  try {
+    const h = harness(createProject(rig.dir, 'blink', 'blink'), { toolchain: isolated(rig) });
+    await h.wait(() => h.executed.some((e) => e[0] === 'setContext' && e[1] === 'shibo.compilerReady' && e[2] === false), 'the tour to be told there is no compiler yet');
+    await h.commands['shibo.open']();
+    h.answers.error = (_text, choices) => choices[0];                          // press the first button: the fix
+    h.send({ t: 'start' });
+    await h.wait(() => h.posted.some((m) => m.t === 'status' && m.state === 'running'), 'the sketch to run after setup', 15000);
+    assert.match(h.errors[0], /Shibo needs the Arduino compiler/);
+    assert.deepEqual(h.errorChoices[0], ['Download the Arduino compiler (about 80 MB, one time)', 'Install it myself']);
+    assert.ok(existsSync(path.join(h.storage, 'compiler', 'ready')), 'the compiler went into the extension\'s own storage');
+    assert.ok(h.progress.some((r) => /Downloading the Arduino compiler/.test(r.message)), 'VS Code showed the progress');
+    assert.equal(h.cancels.length, 1, 'with a Cancel');
+    assert.ok(h.posted.some((m) => m.t === 'setup' && m.state === 'done'), 'the page was told too');
+    await h.wait(() => h.executed.some((e) => e[0] === 'setContext' && e[1] === 'shibo.compilerReady' && e[2] === true), 'the tour step to be marked done');
+    h.panel.dispose();
+
+    // "Install it myself" opens the instructions and installs nothing.
+    const rig2 = await makeRig();
+    try {
+      const g = harness(createProject(rig2.dir, 'blink', 'blink'), { toolchain: isolated(rig2) });
+      await g.commands['shibo.open']();
+      g.answers.error = () => 'Install it myself';
+      g.send({ t: 'start' });
+      await g.wait(() => g.executed.some((e) => e[0] === 'shibo.getArduinoCli'), 'the instructions to open');
+      assert.equal(existsSync(path.join(g.storage, 'compiler')), false);
+      g.panel.dispose();
+    } finally { await rig2.close(); }
+  } finally { await rig.close(); }
+});
+
+test('a fix the person runs themselves can be put in a terminal, not run', { skip: !posix }, async () => {
+  const rig = await makeRig();
+  try {
+    const mine = theirs(rig); mine.installed(); process.env.FAKE_MODE = 'rosetta';
+    const h = harness(createProject(rig.dir, 'blink', 'blink'), { toolchain: isolated(rig, mine.bin) });
+    await h.commands['shibo.open']();
+    h.answers.error = (_text, choices) => choices[0];
+    h.send({ t: 'start' });
+    await h.wait(() => h.terminals.length === 1, 'a terminal with the command');
+    assert.deepEqual(h.errorChoices[0], ['Put the command in a terminal']);
+    assert.deepEqual(h.terminals[0].sent, [['softwareupdate --install-rosetta --agree-to-license', false]]);
+    assert.equal(h.terminals[0].shown, true);
+    h.panel.dispose();
+  } finally { await rig.close(); }
+});
+
+test('Check Setup lists what is there and what is not, installs at a pick, and can remove the download', { skip: !posix }, async () => {
+  const rig = await makeRig();
+  try {
+    const h = harness(rig.dir, { toolchain: isolated(rig) });
+    let turn = 0;
+    h.answers.pick = (items) => (++turn === 1 ? items[0] : turn === 3 ? items.find((i) => /Remove/.test(i.label)) : undefined);
+    await h.commands['shibo.checkSetup']();                                    // 1: pick the compiler; 2: just look
+    assert.deepEqual(labels(h.picks[0]), ['Arduino compiler: not found', 'Arduino board package: comes with the compiler', 'ATtiny85 board package (optional): not installed', h.picks[0][3].label.replace(/^\$\([a-z-]+\) /, '')]);
+    assert.match(h.picks[0][3].label, /Circuit checker, ngspice \(optional\)/);
+    assert.match(h.picks[0][0].detail, /about 80 MB, one time/);
+    assert.ok(h.progress.some((r) => /board package/.test(r.message)), 'the download ran with VS Code\'s progress');
+    assert.equal(labels(h.picks[1])[0], 'Arduino compiler: downloaded by Shibo');
+    assert.match(h.picks[1][0].description, /MB|KB|bytes/); assert.match(h.picks[1][0].detail, /compiler/);
+    assert.equal(labels(h.picks[1])[1], 'Arduino board package: installed');
+    assert.ok(labels(h.picks[1]).includes('Remove the downloaded compiler'));
+    assert.ok(!labels(h.picks[0]).includes('Remove the downloaded compiler'));
+
+    h.answers.warn = 'Remove';
+    await h.commands['shibo.checkSetup']();                                    // 3: pick Remove; 4: just look
+    assert.match(h.warnings.at(-1)!, /Remove the compiler Shibo downloaded/);
+    assert.equal(existsSync(path.join(h.storage, 'compiler')), false);
+    assert.equal(labels(h.picks[3])[0], 'Arduino compiler: not found');
+
+    // Removing by its own command asks first, and "no" keeps it.
+    turn = 0; await h.commands['shibo.checkSetup']();
+    h.answers.warn = undefined;
+    await h.commands['shibo.removeCompiler']();
+    assert.ok(existsSync(path.join(h.storage, 'compiler', 'ready')), 'kept when the question is not answered with Remove');
+  } finally { await rig.close(); }
+});
+
+test('Check Setup says when the chosen compiler path is wrong, and offers the ATtiny85 command for a found compiler', { skip: !posix }, async () => {
+  const rig = await makeRig();
+  try {
+    const mine = theirs(rig); mine.installed();
+    const h = harness(rig.dir, { toolchain: isolated(rig, mine.bin), settings: { arduinoCli: path.join(rig.dir, 'not-here') } });
+    h.answers.pick = (items) => (h.picks.length === 1 ? items[2] : undefined);
+    await h.commands['shibo.checkSetup']();
+    assert.equal(labels(h.picks[0])[0], 'Arduino compiler: found on this computer');
+    assert.match(h.picks[0][0].detail, /shibo\.arduinoCli setting.*not-here.*not there/);
+    assert.equal(labels(h.picks[0])[1], 'Arduino board package: installed');
+    assert.equal(h.terminals.length, 1);
+    assert.match(h.terminals[0].sent[0][0], /core install ATTinyCore:avr --additional-urls https:/); assert.equal(h.terminals[0].sent[0][1], false);
+  } finally { await rig.close(); }
+});
+
+test('the listing declares the setup commands, the machine-only setting, the tour step and untrusted folders', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../../extension/package.json', import.meta.url), 'utf8'));
+  const c = pkg.contributes;
+  const titles = Object.fromEntries(c.commands.map((x: any) => [x.command, x.title]));
+  assert.equal(titles['shibo.checkSetup'], 'Check Setup'); assert.equal(titles['shibo.removeCompiler'], 'Remove Downloaded Compiler');
+  const setting = c.configuration.properties['shibo.arduinoCli'];
+  assert.deepEqual([setting.type, setting.default, setting.scope], ['string', '', 'machine']);
+  assert.deepEqual(pkg.capabilities.untrustedWorkspaces, { supported: true });
+  const steps = c.walkthroughs[0].steps.map((s: any) => s.id);
+  assert.deepEqual(steps, ['new', 'compiler', 'run', 'build']);
+  const step = c.walkthroughs[0].steps[1];
+  assert.equal(step.title, 'Get the compiler'); assert.match(step.description, /command:shibo\.checkSetup/);
+  assert.deepEqual(step.completionEvents, ['onContext:shibo.compilerReady']);
+  assert.ok(existsSync(new URL('../../extension/' + step.media.markdown, import.meta.url)));
+  assert.match(c.viewsWelcome[0].contents, /\[Check your setup\]\(command:shibo\.checkSetup\)/);
 });
