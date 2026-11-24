@@ -12,6 +12,7 @@ import { findNgspice } from './electrical/spice.ts';
 
 /** What is installed and what is not, for the setup check. */
 export interface SetupStatus {
+  /** `ownBytes`: how much Shibo's own download takes on disk, whenever there is one, in use or not, finished or not. */
   compiler: { found: boolean; origin?: Compiler['origin']; path?: string; settingMissing: boolean; ownBytes?: number };
   avr: 'present' | 'absent' | 'unknown';
   attiny: 'present' | 'absent' | 'unknown';
@@ -67,8 +68,9 @@ export class Toolchain {
     try {
       const c = this.find(), pkg = packageOf(board);
       const sketch = fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith('.ino'));
-      if (c && pkg && sketch && await this.hasPackage(c, pkg) === 'absent') {
-        const need = needCore(pkg, c.cli);
+      // Only the Arduino package is looked for ahead of time: other packages can live in places this check does not know.
+      if (c && pkg === 'arduino:avr' && sketch && await this.hasPackage(c, pkg) === 'absent') {
+        const need = needCore(pkg, c);
         return { ok: false, log: need.message, need };
       }
       return await buildSketch(dir, board, this.o.cacheDir, c);
@@ -112,7 +114,7 @@ export class Toolchain {
     const spice = findNgspice();
     const onPath = (w.env ?? process.env).PATH?.split(path.delimiter).some((d) => d && fs.existsSync(path.join(d, platform === 'win32' ? 'ngspice.exe' : 'ngspice'))) ?? false;
     return {
-      compiler: { found: !!c, ...(c ? { origin: c.origin, path: c.cli } : {}), settingMissing: settingMissing(w), ...(c?.origin === 'own' ? { ownBytes: folderSize(this.o.ownDir) } : {}) },
+      compiler: { found: !!c, ...(c ? { origin: c.origin, path: c.cli } : {}), settingMissing: settingMissing(w), ...(fs.existsSync(this.o.ownDir) ? { ownBytes: folderSize(this.o.ownDir) } : {}) },
       avr, attiny,
       ngspice: { found: spice !== null && (spice !== 'ngspice' || onPath), how: NGSPICE_HOW[platform] ?? NGSPICE_HOW.linux },
       ready: !!c && avr !== 'absent',

@@ -11,18 +11,8 @@ import path from 'node:path';
 import { ownCompiler, ownReady, runCli, type Compiler } from './compiler.ts';
 import type { CompilerRun } from './build.ts';
 
-export const CLI_VERSION = '1.6.0';
-
-/** The arduino-cli download for each kind of computer (platform-arch), with the SHA-256 from Arduino's 1.6.0-checksums.txt. */
-export const CLI_ASSETS: Record<string, { file: string; sha256: string }> = {
-  'linux-x64': { file: 'Linux_64bit.tar.gz', sha256: '321ee249f44c78053234fec0f36101092bc6021bf24939e15e0cc2449c5ed250' },
-  'linux-arm64': { file: 'Linux_ARM64.tar.gz', sha256: '2ed4e1436bb3be1265966af8eba95dd25e28f3a9f92d0a58d371ed14dbaf550f' },
-  'linux-arm': { file: 'Linux_ARMv7.tar.gz', sha256: '4936285be94c9327d8bc44124123789ed9bf6c0288bf826a4c2dd1ba98548667' },
-  'darwin-x64': { file: 'macOS_64bit.tar.gz', sha256: 'af6a30cf5f57cc076b45fe55c6fd389440156f70706e7f8d3302a11a9fe32913' },
-  'darwin-arm64': { file: 'macOS_ARM64.tar.gz', sha256: 'dc70f037fcbc8e7add892282bed5bab5eac317ff00bf0dd2f21e4a8e1d338a1c' },
-  'win32-x64': { file: 'Windows_64bit.zip', sha256: '2769b9b282ce597db9679d8ec14d726d57004ca4205ef4d7a795bf36b6cdc9d8' },
-  'win32-arm64': { file: 'Windows_ARM64.zip', sha256: 'ac31be09fcb5ca34af5450ba5a3106ea23394561d6a187cb9f4074756d18b0c6' },
-};
+import { CLI_ASSETS, CLI_VERSION } from './assets.ts';
+export { CLI_ASSETS, CLI_VERSION };
 
 /** Where a step of setup has got to: what is happening and, when it can be measured, how far along (0 to 1). */
 export interface Step { text: string; fraction?: number }
@@ -48,7 +38,7 @@ const SAY = {
   checksum: 'The downloaded file is not the one Arduino published, so it was not used. This can happen on a network that shows a sign-in page first. Try again on another connection.',
   disk: 'There is not enough free disk space to finish. Free some space, then try again.',
   unsupported: 'Shibo cannot download the Arduino compiler for this kind of computer. Install arduino-cli yourself, then run the sketch again.',
-  cancelled: 'Setup was cancelled. Nothing was installed.',
+  cancelled: 'Setup was cancelled. You can start it again at any time.',
 };
 const oops = (kind: keyof typeof SAY) => new SetupError(kind, SAY[kind]);
 const BASE = 'https://downloads.arduino.cc/arduino-cli/';
@@ -62,40 +52,59 @@ function asSetupError(err: unknown, signal?: AbortSignal): SetupError {
   return new SetupError('failed', `Setup did not finish: ${e?.message ?? String(err)}`);
 }
 
+/** Where a redirect leads, or null if it must not be followed: never from a secure address to an insecure one, never to anything but the web. */
+export function redirectTarget(from: string, location: string): string | null {
+  let to: URL;
+  try { to = new URL(location, from); } catch { return null; }
+  if (to.protocol !== 'https:' && to.protocol !== 'http:') return null;
+  if (from.startsWith('https:') && to.protocol !== 'https:') return null;
+  return to.href;
+}
+
 /** Fetch a file, following redirects, and return its SHA-256. The file is only as good as that checksum says. */
 function download(url: string, file: string, o: SetupOptions, redirects = 5): Promise<string> {
   return new Promise((resolve, reject) => {
-    let settled = false;
-    const fail = (e: unknown) => { if (!settled) { settled = true; reject(e); } };
+    let settled = false, out: fs.WriteStream | null = null;
+    // However it ends badly, nothing is left open: an open file cannot be deleted on Windows.
+    const fail = (e: unknown) => { if (settled) return; settled = true; out?.destroy(); req.destroy(); reject(e); };
     const req = (url.startsWith('https:') ? https : http).get(url, { signal: o.signal }, (res) => {
       const status = res.statusCode ?? 0;
       if (status >= 300 && status < 400 && res.headers.location) {
         res.resume();
-        if (redirects <= 0) return fail(oops('network'));
+        const next = redirectTarget(url, res.headers.location);
+        if (redirects <= 0 || !next) return fail(oops('network'));
         settled = true;
-        return void download(new URL(res.headers.location, url).href, file, o, redirects - 1).then(resolve, reject);
+        return void download(next, file, o, redirects - 1).then(resolve, reject);
       }
       if (status !== 200) { res.resume(); return fail(oops('network')); }
       const total = Number(res.headers['content-length']) || 0;
-      const hash = createHash('sha256'); const out = fs.createWriteStream(file);
+      const hash = createHash('sha256'); const sink = out = fs.createWriteStream(file);
       let got = 0;
       res.on('data', (chunk: Buffer) => {
         hash.update(chunk); got += chunk.length;
         o.progress?.({ text: 'Downloading the Arduino compiler', ...(total ? { fraction: Math.min(1, got / total) } : {}) });
       });
-      res.on('error', fail); out.on('error', fail);
+      res.on('error', fail); sink.on('error', fail);
       res.on('aborted', () => fail(o.signal?.aborted ? oops('cancelled') : oops('network')));
-      out.on('finish', () => { if (!settled) { settled = true; resolve(hash.digest('hex')); } });
-      res.pipe(out);
+      sink.on('finish', () => { if (!settled) { settled = true; resolve(hash.digest('hex')); } });
+      res.pipe(sink);
     });
     req.on('error', (e: NodeJS.ErrnoException) => fail(o.signal?.aborted ? oops('cancelled') : e.code === 'ENOSPC' ? oops('disk') : oops('network')));
   });
 }
 
+/**
+ * The tar to unpack with. On Windows it is the system's own (it reads .zip, and
+ * a tar from Git or MSYS that happens to come first on the PATH does not).
+ */
+export function tarProgram(platform: string = process.platform, env: Record<string, string | undefined> = process.env): string {
+  return platform === 'win32' ? path.win32.join(env.SystemRoot ?? env.windir ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+}
+
 function unpack(archive: string, into: string, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     // The system's tar reads .tar.gz everywhere and .zip on Windows 10 and later.
-    execFile('tar', ['-xf', archive, '-C', into], { signal, windowsHide: true }, (err) => {
+    execFile(tarProgram(), ['-xf', archive, '-C', into], { signal, windowsHide: true }, (err) => {
       if (!err) return resolve();
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return reject(new SetupError('unsupported', 'This computer has no "tar" program to unpack the download with. Install arduino-cli yourself, then run the sketch again.'));
       reject(err);
@@ -151,12 +160,15 @@ export async function installCompiler(ownDir: string, o: SetupOptions = {}): Pro
   if (!asset) throw oops('unsupported');
   const own = ownCompiler(ownDir, platform);
   if (ownReady(ownDir, platform)) return own;
-  const tmp = path.join(ownDir, 'tmp'), checked = path.join(ownDir, 'checked');
+  const checked = path.join(ownDir, 'checked');
+  const have = () => fs.existsSync(own.cli) && fs.existsSync(checked) && fs.readFileSync(checked, 'utf8').trim() === asset.sha256;
+  let tmp = '';
   try {
-    const have = fs.existsSync(own.cli) && fs.existsSync(checked) && fs.readFileSync(checked, 'utf8').trim() === asset.sha256;
-    if (!have) {
-      fs.rmSync(tmp, { recursive: true, force: true });
-      fs.mkdirSync(path.join(tmp, 'unpack'), { recursive: true });
+    if (!have()) {
+      // A folder of this run's own: two windows may be setting up at once.
+      fs.mkdirSync(ownDir, { recursive: true });
+      tmp = fs.mkdtempSync(path.join(ownDir, 'tmp-'));
+      fs.mkdirSync(path.join(tmp, 'unpack'));
       const name = `arduino-cli_${CLI_VERSION}_${asset.file}`, archive = path.join(tmp, name + '.part');
       o.progress?.({ text: 'Downloading the Arduino compiler', fraction: 0 });
       const sum = await download((o.base ?? BASE) + name, archive, o);
@@ -167,10 +179,12 @@ export async function installCompiler(ownDir: string, o: SetupOptions = {}): Pro
       await unpack(path.join(tmp, name), path.join(tmp, 'unpack'), o.signal);
       const unpacked = path.join(tmp, 'unpack', path.basename(own.cli));
       if (!fs.existsSync(unpacked)) throw new SetupError('failed', 'Setup did not finish: the download did not contain the compiler.');
-      fs.rmSync(checked, { force: true });
-      fs.renameSync(unpacked, own.cli);
-      fs.chmodSync(own.cli, 0o755);
-      fs.writeFileSync(checked, asset.sha256 + '\n');
+      if (!have()) {                                                   // unless another window put the same checked file there meanwhile
+        fs.rmSync(checked, { force: true });
+        fs.renameSync(unpacked, own.cli);
+        fs.chmodSync(own.cli, 0o755);
+        fs.writeFileSync(checked, asset.sha256 + '\n');
+      }
     }
     await installCore(own, 'arduino:avr', o);
     // arduino-cli keeps every archive it downloaded; unpacked, they are only taking up room.
@@ -180,7 +194,8 @@ export async function installCompiler(ownDir: string, o: SetupOptions = {}): Pro
   } catch (err) {
     throw asSetupError(err, o.signal);
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    // Tidying up must never hide what really happened.
+    if (tmp) { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* left for the next run or for Remove */ } }
   }
 }
 

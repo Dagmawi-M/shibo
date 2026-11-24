@@ -74,7 +74,7 @@ export async function checkSetup(toolchain: Toolchain, settingPath: () => string
     const c = st.compiler, items: Item[] = [];
     const wrong = c.settingMissing ? `The path in the shibo.arduinoCli setting (${settingPath() ?? ''}) is not there, so it was not used. ` : '';
     if (c.found) {
-      items.push({ label: `$(check) Arduino compiler: ${ORIGIN[c.origin!]}`, description: c.ownBytes === undefined ? '' : size(c.ownBytes), detail: `${wrong}${c.path}` });
+      items.push({ label: `$(check) Arduino compiler: ${ORIGIN[c.origin!]}`, description: c.origin === 'own' && c.ownBytes !== undefined ? size(c.ownBytes) : '', detail: `${wrong}${c.path}` });
     } else {
       items.push({ label: '$(error) Arduino compiler: not found', detail: `${wrong}Pick this to download it (about 80 MB, one time). After that Shibo works offline.`, act: async () => { await runFix(toolchain, needCompiler().fix!); } });
     }
@@ -83,13 +83,13 @@ export async function checkSetup(toolchain: Toolchain, settingPath: () => string
       : st.avr === 'absent' ? { label: '$(error) Arduino board package: not installed', detail: 'Pick this to install it (about 70 MB).', act: async () => { await runFix(toolchain, { kind: 'core', pkg: 'arduino:avr' }); } }
       : { label: '$(question) Arduino board package: could not be checked', detail: 'This compiler does not say where its packages are. Shibo will find out when you run a sketch.' };
     items.push(avr);
-    const tiny = needCore('ATTinyCore:avr', c.path);
+    const tiny = needCore('ATTinyCore:avr', toolchain.find() ?? {});
     items.push(st.attiny === 'present' ? { label: '$(check) ATtiny85 board package (optional): installed', detail: 'ATtiny85 sketches can be compiled.' }
       : { label: '$(dash) ATtiny85 board package (optional): not installed', detail: c.found ? 'Only the ATtiny85 board needs it. Pick this to put the install command in a terminal for you to run.' : 'Only the ATtiny85 board needs it. It can be installed once there is a compiler.',
         ...(c.found ? { act: () => inTerminal(tiny.command!) } : {}) });
     items.push(st.ngspice.found ? { label: '$(check) Circuit checker, ngspice (optional): found', detail: 'Voltages and currents are checked while a sketch runs.' }
       : { label: '$(dash) Circuit checker, ngspice (optional): not found', detail: `Without it Shibo checks the wiring rules only. ${st.ngspice.how}` });
-    if (c.ownBytes !== undefined) items.push({ label: '$(trash) Remove the downloaded compiler', detail: `Frees about ${size(c.ownBytes)}.`, act: () => removeDownloaded(toolchain) });
+    if (c.ownBytes !== undefined) items.push({ label: '$(trash) Remove the downloaded compiler', detail: `Frees about ${size(c.ownBytes)}.${c.origin === 'own' ? '' : ' Shibo is not using it.'}`, act: () => removeDownloaded(toolchain) });
 
     const picked = await vscode.window.showQuickPick(items, { title: 'Shibo: your setup', placeHolder: st.ready ? 'Everything a sketch needs is here.' : 'Pick what is missing to install it.' });
     if (!picked?.act) return;

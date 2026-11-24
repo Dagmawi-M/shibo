@@ -3,6 +3,7 @@
 // price there, every buyable part is listed with no price.
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeInFolder } from './safewrite.ts';
 import { billOfMaterials, bomCsv, bomMarkdown, defaultPriceBook, parsePriceBook, priceBom, type PriceBook, type PriceEntry } from './bom.ts';
 import type { Project } from './project.ts';
 
@@ -26,7 +27,7 @@ export function savePrice(dir: string, key: string, entry: PriceEntry, currency?
   if (!clean) throw new Error('that price entry is not usable');
   book.prices[key] = clean;
   if (currency) book.currency = parsePriceBook({ currency }).currency;
-  fs.writeFileSync(path.join(dir, PRICES_FILE), JSON.stringify(book, null, 2) + '\n');
+  writeInFolder(path.join(dir, PRICES_FILE), JSON.stringify(book, null, 2) + '\n');
   return book;
 }
 
@@ -35,6 +36,6 @@ export function exportBom(dir: string, project: Project, format: 'csv' | 'md'): 
   if (!dir) throw new Error('no project folder is open');
   const b = priceBom(billOfMaterials(project), loadPrices(dir));
   const file = path.join(dir, `parts-list.${format}`);
-  fs.writeFileSync(file, format === 'csv' ? bomCsv(b) : bomMarkdown(b, `Parts list: ${path.basename(dir)}`));
+  writeInFolder(file, format === 'csv' ? bomCsv(b) : bomMarkdown(b, `Parts list: ${path.basename(dir)}`));
   return file;
 }

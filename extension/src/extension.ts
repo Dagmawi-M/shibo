@@ -96,12 +96,14 @@ function open(context: vscode.ExtensionContext, toolchain: Toolchain, dir: strin
   const title = panel.title;
   let dirty = false;
   let note: ReturnType<typeof progressNote> | null = null;
+  let offered: string | undefined;                // what the last error offered to install
   session.onMessage((m) => {
     if (m.t === 'project' || m.t === 'dirty') { dirty = m.dirty; panel.title = dirty ? `${title} ●` : title; }
     // A sketch Shibo just wrote: show it beside the circuit so it can be edited straight away.
     if (m.t === 'guideCreated') void vscode.env.openExternal(vscode.Uri.file(m.path));
     if (m.t === 'sketchCreated') void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(m.path), vscode.ViewColumn.One);
     // A run that failed for want of something on the computer: say so where the sketch is being written, too.
+    if (m.t === 'error') offered = m.fixKind;
     if (m.t === 'error' && m.fix) {
       const choices = m.fixKind === 'compiler' ? [m.fix, 'Install it myself'] : [m.fix];
       void vscode.window.showErrorMessage(m.message, ...choices).then((answer) => {
@@ -115,7 +117,13 @@ function open(context: vscode.ExtensionContext, toolchain: Toolchain, dir: strin
     // A fix under way shows VS Code's own progress as well as the page's, with Cancel in both.
     if (m.t === 'setup') {
       if (m.state === 'working') { note ??= progressNote('Shibo setup', () => void session.handle({ t: 'cancelFix' })); note.report(m); }
-      else { note?.close(); note = null; void tellReady(toolchain); }
+      else {
+        note?.close(); note = null; void tellReady(toolchain);
+        // Setup that did not work must not be a dead end either.
+        if (m.state === 'failed') {
+          void vscode.window.showErrorMessage(`Shibo: ${m.text}`, ...(offered === 'compiler' ? ['Install it myself'] : [])).then((answer) => { if (answer) void vscode.commands.executeCommand('shibo.getArduinoCli'); });
+        }
+      }
     }
     void panel.webview.postMessage(m);
   });

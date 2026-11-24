@@ -13,6 +13,7 @@ import * as edit from './edit.ts';
 import { buildSketch, NO_SKETCH, type BuildResult } from './build.ts';
 import type { Fix, Need } from './builderror.ts';
 import type { Toolchain } from './toolchain.ts';
+import { writeInFolder } from './safewrite.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates, sharedFolder, folderKind, OWN_FOLDER } from './templates.ts';
@@ -280,7 +281,7 @@ export class Session {
     if (!this.dir) throw new Error('no project folder is open');
     if (this.loadError) throw new Error(this.loadError);
     if (this.shared) throw new Error(OWN_FOLDER);
-    fs.writeFileSync(path.join(this.dir, FILE), JSON.stringify(this.project, null, 2) + '\n');
+    writeInFolder(path.join(this.dir, FILE), JSON.stringify(this.project, null, 2) + '\n');
     this.dirty = false;
     this.send({ t: 'dirty', dirty: false });      // the circuit did not change, so the page must not redraw it
   }
@@ -344,7 +345,8 @@ export class Session {
     const run = this.run;
     if (!run) return;
     const key = `${part}\n${name}`, since = run.held.get(key);
-    if (since !== undefined && run.engine.now - since < HOLD_MS * MS) { run.later.set(key, { part, name, value }); return; }
+    // After a rewind the last change lies in the future: it holds nothing back.
+    if (since !== undefined && run.engine.now >= since && run.engine.now - since < HOLD_MS * MS) { run.later.set(key, { part, name, value }); return; }
     run.later.delete(key); run.held.set(key, run.engine.now);
     run.circuit.setControl(part, name, value);
   }
@@ -411,7 +413,7 @@ export class Session {
   private writeGuide(): void {
     if (!this.dir) throw new Error('no project folder is open');
     const file = path.join(this.dir, 'wiring-guide.html');
-    fs.writeFileSync(file, generateGuide(this.project, path.basename(this.dir)));
+    writeInFolder(file, generateGuide(this.project, path.basename(this.dir)));
     this.send({ t: 'guideCreated', path: file });
   }
 
@@ -464,7 +466,7 @@ export class Session {
         note += ` Your old sketch was kept as .shibo-backup/${path.basename(kept)}.`;
       }
       const target = file ?? path.basename(this.newSketch());
-      fs.writeFileSync(path.join(this.dir, target), sketch);
+      writeInFolder(path.join(this.dir, target), sketch);
     }
     this.sendProject();
     this.send({ t: 'shared', ok: true, message: note });

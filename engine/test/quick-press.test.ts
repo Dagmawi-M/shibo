@@ -58,3 +58,18 @@ test('a knob being turned ends on the last value it was given', async () => {
   assert.ok((r.serial().match(/LED O\w+/g) ?? []).length >= 3, 'it stayed pressed, so the sketch kept toggling');
   } finally { r.s.dispose(); }
 });
+
+test('after rewinding, a click still reaches the sketch', async () => {
+  const r = await running();
+  try {
+    r.ticks(100);                                                   // 1.6 s in
+    await r.press(1); await r.press(0); r.ticks(30);
+    assert.deepEqual(r.serial().match(/LED O\w+/g), ['LED ON']);
+    await r.s.handle({ t: 'seek', ms: 300 } as any);                // back to before the click, paused
+    await r.s.handle({ t: 'resume' } as any);
+    r.ticks(10);
+    const sofar = r.serial().length;
+    await r.press(1); await r.press(0); r.ticks(40);
+    assert.match(r.serial().slice(sofar), /LED O/, 'the click after the rewind reached the sketch');
+  } finally { r.s.dispose(); }
+});

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { installCompiler, installCore, installLibrary, removeCompiler, folderSize, SetupError, CLI_ASSETS, CLI_VERSION, type Step } from '../src/setup.ts';
+import { installCompiler, installCore, installLibrary, removeCompiler, folderSize, tarProgram, redirectTarget, SetupError, CLI_ASSETS, CLI_VERSION, type Step } from '../src/setup.ts';
 import { ownCompiler, ownReady, boardPackage } from '../src/compiler.ts';
 import { makeRig } from './helpers/setup-rig.ts';
 
@@ -14,7 +14,7 @@ const fails = async (p: Promise<unknown>, kind: SetupError['kind']) => {
   assert.ok(err.message.length > 20 && !/[!]/.test(err.message), err.message);
   return err as SetupError;
 };
-const leftovers = (ownDir: string) => (existsSync(ownDir) ? readdirSync(ownDir).filter((f) => f === 'tmp' || f.endsWith('.part')) : []);
+const leftovers = (ownDir: string) => (existsSync(ownDir) ? readdirSync(ownDir).filter((f) => f.startsWith('tmp') || f.endsWith('.part')) : []);
 
 test('the published checksums are the ones Arduino lists for 1.6.0', () => {
   assert.equal(CLI_VERSION, '1.6.0');
@@ -132,4 +132,42 @@ test('the downloaded compiler can be removed', { skip }, async () => {
     mkdirSync(rig.ownDir, { recursive: true }); writeFileSync(path.join(rig.ownDir, 'x'), '12345');
     assert.equal(folderSize(rig.ownDir), 5); assert.equal(folderSize(path.join(rig.dir, 'nope')), 0);
   } finally { await rig.close(); }
+});
+
+test('a cancelled download says only what is true, and leaves no file open', { skip: skip || !existsSync('/proc/self/fd') }, async () => {
+  const rig = await makeRig();
+  try {
+    const open = () => readdirSync('/proc/self/fd').length;
+    const before = open();
+    rig.answer = 'half';
+    const stop = new AbortController(); let heard = false;
+    const err = await fails(installCompiler(rig.ownDir, { ...rig.setup, signal: stop.signal, progress: (s) => { if (s.fraction && !heard) { heard = true; stop.abort(); } } }), 'cancelled');
+    assert.ok(!/nothing was installed/i.test(err.message), 'a later step may already have put files in place');
+    rig.release();
+    await new Promise((r) => setTimeout(r, 100));
+    assert.ok(open() <= before, `files or sockets were left open (${before} before, ${open()} after)`);
+  } finally { await rig.close(); }
+});
+
+test('two windows setting up at once do not trip over each other', { skip }, async () => {
+  const rig = await makeRig();
+  try {
+    const both = await Promise.allSettled([installCompiler(rig.ownDir, rig.setup), installCompiler(rig.ownDir, rig.setup)]);
+    assert.deepEqual(both.map((r) => r.status), ['fulfilled', 'fulfilled']);
+    assert.equal(ownReady(rig.ownDir), true); assert.deepEqual(leftovers(rig.ownDir), []);
+  } finally { await rig.close(); }
+});
+
+test('on Windows the system\'s own tar unpacks the download, whatever else is on the PATH', () => {
+  assert.equal(tarProgram('win32', { SystemRoot: 'D:\\Win' }), 'D:\\Win\\System32\\tar.exe');
+  assert.equal(tarProgram('win32', {}), 'C:\\Windows\\System32\\tar.exe');
+  assert.equal(tarProgram('linux', {}), 'tar'); assert.equal(tarProgram('darwin', {}), 'tar');
+});
+
+test('a download is never sent on from a secure address to an insecure one', () => {
+  assert.equal(redirectTarget('https://downloads.arduino.cc/a/x.tar.gz', '/b/x.tar.gz'), 'https://downloads.arduino.cc/b/x.tar.gz');
+  assert.equal(redirectTarget('https://downloads.arduino.cc/a/x', 'https://cdn.example/x'), 'https://cdn.example/x');
+  assert.equal(redirectTarget('https://downloads.arduino.cc/a/x', 'http://cdn.example/x'), null);
+  assert.equal(redirectTarget('http://127.0.0.1:1/x', 'http://127.0.0.1:2/y'), 'http://127.0.0.1:2/y');
+  assert.equal(redirectTarget('https://a/x', 'ftp://a/x'), null);
 });

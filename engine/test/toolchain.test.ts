@@ -171,3 +171,35 @@ test('a missing library is installed at a press, and a Mac without Rosetta is gi
     b.s.dispose();
   } finally { await rig.close(); }
 });
+
+test('what a setup that did not finish left behind is seen, and can be removed', { skip }, async () => {
+  const rig = await makeRig();
+  try {
+    const tc = chain(rig);
+    process.env.FAKE_MODE = 'core-fails';
+    await assert.rejects(tc.repair({ kind: 'compiler' }, () => {}, new AbortController().signal));
+    const st = await tc.status();
+    assert.equal(st.compiler.found, false, 'the unfinished copy is not used');
+    assert.ok(st.compiler.ownBytes! > 0, 'but what it left is counted');
+    await tc.remove();
+    assert.equal((await tc.status()).compiler.ownBytes, undefined); assert.equal(existsSync(rig.ownDir), false);
+    // The same once the person has their own compiler: Shibo's download can still be seen and removed.
+    delete process.env.FAKE_MODE;
+    await tc.repair({ kind: 'compiler' }, () => {}, new AbortController().signal);
+    const mine = theirs(rig); mine.installed();
+    const both = chain(rig, { path: mine.bin });
+    const st2 = await both.status();
+    assert.equal(st2.compiler.origin, 'path'); assert.ok(st2.compiler.ownBytes! > 0);
+  } finally { await rig.close(); }
+});
+
+test('an ATtiny85 package installed some other way is not second-guessed: the build is simply tried', { skip }, async () => {
+  const rig = await makeRig();
+  try {
+    const mine = theirs(rig); mine.installed();              // the Arduino package is there; ATTinyCore is not in the data folder
+    const tc = chain(rig, { path: mine.bin });
+    const r = await tc.build(createProject(rig.dir, 'tiny', 'blink'), 'attiny85');
+    assert.equal(r.ok, true, r.log);
+    assert.ok(rig.commands().some((c) => c.includes('compile -b ATTinyCore:avr')), 'the compiler was asked');
+  } finally { await rig.close(); }
+});

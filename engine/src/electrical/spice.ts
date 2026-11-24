@@ -56,7 +56,7 @@ process.on('exit', () => { for (const p of running) { try { p.kill(); } catch { 
 function guard(pid: number): () => void {
   if (process.platform === 'win32') return () => {};
   let w: ChildProcess;
-  try { w = spawn('/bin/sh', ['-c', 'cat >/dev/null; kill "$0" 2>/dev/null', String(pid)], { stdio: ['pipe', 'ignore', 'ignore'] }); } catch { return () => {}; }
+  try { w = spawn('/bin/sh', ['-c', 'cat >/dev/null 2>&1 && kill "$0" 2>/dev/null', String(pid)], { stdio: ['pipe', 'ignore', 'ignore'] }); } catch { return () => {}; }
   w.on('error', () => {});
   w.stdin!.on('error', () => {});
   w.unref(); (w.stdin as unknown as { unref?: () => void }).unref?.();

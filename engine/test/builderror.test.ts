@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { cleanLog, diagnose } from '../src/builderror.ts';
+import { cleanLog, diagnose, needCompiler } from '../src/builderror.ts';
 import { LIBRARIES, BUNDLED } from '../src/libraries.ts';
 
 const E = '\x1b';
@@ -46,6 +46,11 @@ test('no compiler: the download is offered, with its size', () => {
   assert.deepEqual(n.fix, { kind: 'compiler' });
   assert.equal(n.label, 'Download the Arduino compiler (about 80 MB, one time)');
   assert.match(n.message, /Arduino compiler/);
+  // A kind of computer Shibo has no download for gets the instructions, not a button that cannot work.
+  const none = needCompiler('sunos', 'x64');
+  assert.equal(none.fix, undefined); assert.equal(none.label, undefined);
+  assert.match(none.message, /yourself/); assert.match(none.message, /arduino\.github\.io\/arduino-cli/);
+  assert.deepEqual(needCompiler('win32', 'arm64').fix, { kind: 'compiler' });
 });
 
 test('no board package: installing it is offered; the ATtiny85 one gets a command instead', () => {
@@ -55,9 +60,16 @@ test('no board package: installing it is offered; the ATtiny85 one gets a comman
 
   const t = diagnose("Error during build: Platform 'ATTinyCore:avr' not found: platform not installed", { cli: '/opt/my tools/arduino-cli' })!;
   assert.equal(t.fix, undefined);
-  assert.ok(t.command!.startsWith('"/opt/my tools/arduino-cli" core install ATTinyCore:avr --additional-urls '), t.command);
+  assert.match(t.command!, /^"\/opt\/my tools\/arduino-cli" core update-index --additional-urls https:\S+ && "\/opt\/my tools\/arduino-cli" core install ATTinyCore:avr --additional-urls https:\S+$/);
   assert.match(t.message, /third-party/);
-  assert.ok(diagnose("Platform 'ATTinyCore:avr' not found", { cli: 'arduino-cli' })!.command!.startsWith('arduino-cli core install'));
+  assert.ok(diagnose("Platform 'ATTinyCore:avr' not found", { cli: 'arduino-cli' })!.command!.startsWith('arduino-cli core update-index'));
+  // Shibo's own compiler keeps its packages in its own folder: the command must put them there, or it changes nothing.
+  const own = diagnose("Platform 'ATTinyCore:avr' not found", { cli: '/s/arduino-cli', env: { ARDUINO_DIRECTORIES_DATA: '/s/data', ARDUINO_DIRECTORIES_DOWNLOADS: '/s/staging', ARDUINO_UPDATER_ENABLE_NOTIFICATION: 'false' } })!.command!;
+  assert.ok(own.startsWith('export ARDUINO_DIRECTORIES_DATA="/s/data" ARDUINO_DIRECTORIES_DOWNLOADS="/s/staging"; /s/arduino-cli core update-index'), own);
+  // On Windows the terminal is PowerShell: settings with $env:, a quoted program with &, steps joined with ;
+  const win = diagnose("Platform 'ATTinyCore:avr' not found", { cli: 'C:\\Program Files\\Arduino IDE\\arduino-cli.exe', env: { ARDUINO_DIRECTORIES_DATA: 'C:\\s\\data' }, platform: 'win32' })!.command!;
+  assert.ok(win.startsWith('$env:ARDUINO_DIRECTORIES_DATA="C:\\s\\data"; & "C:\\Program Files\\Arduino IDE\\arduino-cli.exe" core update-index'), win);
+  assert.ok(win.includes('; & "C:\\Program Files\\Arduino IDE\\arduino-cli.exe" core install ATTinyCore:avr') && !win.includes('&&'), win);
 });
 
 test('a missing library is named, and installing it is offered when Shibo knows it', () => {
@@ -78,8 +90,9 @@ test('a missing file of the sketch itself is not offered as a library', () => {
   assert.match(own.message, /mine\.h/); assert.match(own.message, /sketch folder/); assert.ok(!/library manager/.test(own.message));
   const sub = diagnose('x.ino:1:10: fatal error: sub/thing.h: No such file or directory\n #include <sub/thing.h>', {})!;
   assert.equal(sub.fix, undefined);
-  // Even a header Shibo knows is the sketch's own when it is asked for in quotes.
-  assert.equal(diagnose('x.ino:1:10: fatal error: Servo.h: No such file or directory\n #include "Servo.h"', {})!.fix, undefined);
+  // A library Shibo knows is offered however it is asked for: Adafruit's own examples write #include "DHT.h".
+  assert.deepEqual(diagnose('x.ino:1:10: fatal error: DHT.h: No such file or directory\n #include "DHT.h"', {})!.fix, { kind: 'library', name: 'DHT sensor library' });
+  assert.deepEqual(diagnose('/libs/DHT/DHT.h:5:10: fatal error: Adafruit_Sensor.h: No such file or directory\n #include "Adafruit_Sensor.h"', {})!.fix, { kind: 'library', name: 'Adafruit Unified Sensor' });
 });
 
 test('a Mac without Rosetta is told the command that installs it', () => {

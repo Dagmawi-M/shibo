@@ -66,7 +66,7 @@ export function buildSketch(projectDir: string, board: string, cacheDir?: string
         if (err) {
           fs.rmSync(dir, { recursive: true, force: true });
           const enoent = (err as NodeJS.ErrnoException).code === 'ENOENT';
-          const need = diagnose(log, { enoent, cli }) ?? undefined;
+          const need = diagnose(log, { enoent, cli, env: compiler?.env }) ?? undefined;
           if (need) return resolve({ ok: false, log: need.message, need });
           // Said once, in the sketch's own file name. With no output at all, the reason the program gave for stopping.
           return resolve({ ok: false, log: cleanLog(log, dir, ino) || err.message });

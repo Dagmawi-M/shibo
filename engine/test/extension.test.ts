@@ -183,6 +183,20 @@ test('a run with no compiler offers the download in VS Code too, and the sketch 
     await h.wait(() => h.executed.some((e) => e[0] === 'setContext' && e[1] === 'shibo.compilerReady' && e[2] === true), 'the tour step to be marked done');
     h.panel.dispose();
 
+    // Setup that fails is not a dead end: the reason is shown with "Install it myself".
+    const rig3 = await makeRig();
+    try {
+      process.env.FAKE_MODE = 'core-fails';
+      const f = harness(createProject(rig3.dir, 'blink', 'blink'), { toolchain: isolated(rig3) });
+      await f.commands['shibo.open']();
+      f.answers.error = (text, choices) => (/did not finish/.test(text) ? 'Install it myself' : choices[0]);
+      f.send({ t: 'start' });
+      await f.wait(() => f.errors.some((e) => /Setup did not finish.*something broke/.test(e)), 'the failure to be shown in VS Code');
+      assert.deepEqual(f.errorChoices[f.errors.findIndex((e) => /did not finish/.test(e))], ['Install it myself']);
+      await f.wait(() => f.executed.some((e) => e[0] === 'shibo.getArduinoCli'), 'the instructions to open');
+      f.panel.dispose();
+    } finally { delete process.env.FAKE_MODE; await rig3.close(); }
+
     // "Install it myself" opens the instructions and installs nothing.
     const rig2 = await makeRig();
     try {
