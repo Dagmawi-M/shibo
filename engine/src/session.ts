@@ -10,7 +10,7 @@ import { createBackend, runnableBoards } from './backends/index.ts';
 import type { ChipBackend } from './types.ts';
 import { importWokwi, parseProject, validate, type Project } from './project.ts';
 import * as edit from './edit.ts';
-import { buildSketch, NO_SKETCH } from './build.ts';
+import { buildSketch, NO_SKETCH, type BuildResult } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates, sharedFolder, folderKind, OWN_FOLDER } from './templates.ts';
@@ -62,7 +62,7 @@ export type OutMsg =
   | InstrumentOut;
 
 /** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
-type Build = (dir: string, board: string) => Promise<{ ok: boolean; log: string; hex?: string }>;
+type Build = (dir: string, board: string) => Promise<BuildResult>;
 interface Run { engine: Engine; chip: ChipBackend; circuit: Circuit; electrical: Electrical; inst: Instruments; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
 
 const MS = 1e6;
@@ -245,7 +245,7 @@ export class Session {
       const built = await this.build(this.dir, type);
       if (this.disposed) return;
       if (id !== this.startId || project !== this.project) return;        // stopped or edited while building
-      if (!built.ok || !built.hex) throw new Error(built.log === NO_SKETCH ? NO_SKETCH : `the sketch did not build:\n${built.log}`);
+      if (!built.ok || !built.hex) throw new Error(built.log === NO_SKETCH || built.need || /\berror: /.test(built.log) ? built.log : `The sketch did not build:\n${built.log}`);
       const engine = new Engine();
       const chip = createBackend(type, board.part, built.hex);
       engine.addBackend(chip);
