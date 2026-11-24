@@ -34,7 +34,8 @@ export async function makeRig(): Promise<Rig> {
   execFileSync('tar', ['-czf', path.join(dir, full), '-C', pack, 'arduino-cli']);
   const bytes = readFileSync(path.join(dir, full));
   const log = path.join(dir, 'commands.log');
-  process.env.FAKE_LOG = log;
+  process.env.FAKE_LOG = log; process.env.FAKE_STATE = dir;
+  process.env.FAKE_HEX = path.resolve(import.meta.dirname, '..', 'fixtures', 'blink.hex');
   let hits = 0; const held: http.ServerResponse[] = [];
   const rig = { answer: 'file' } as Rig;
   const server = http.createServer((req, res) => {
@@ -55,7 +56,7 @@ export async function makeRig(): Promise<Rig> {
     hits: () => hits,
     commands: () => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean) : []),
     release: () => { for (const r of held.splice(0)) r.destroy(); },
-    close: () => new Promise<void>((r) => { for (const h of held.splice(0)) h.destroy(); delete process.env.FAKE_LOG; delete process.env.FAKE_MODE; server.closeAllConnections(); server.close(() => r()); }),
+    close: () => new Promise<void>((r) => { for (const h of held.splice(0)) h.destroy(); for (const k of ['FAKE_LOG', 'FAKE_MODE', 'FAKE_STATE', 'FAKE_HEX']) delete process.env[k]; server.closeAllConnections(); server.close(() => r()); }),
   });
   return rig;
 }

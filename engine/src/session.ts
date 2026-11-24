@@ -11,6 +11,8 @@ import type { ChipBackend } from './types.ts';
 import { importWokwi, parseProject, validate, type Project } from './project.ts';
 import * as edit from './edit.ts';
 import { buildSketch, NO_SKETCH, type BuildResult } from './build.ts';
+import type { Fix, Need } from './builderror.ts';
+import type { Toolchain } from './toolchain.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
 import { templates, sharedFolder, folderKind, OWN_FOLDER } from './templates.ts';
@@ -28,6 +30,9 @@ export type InMsg =
   | { t: 'undo' }
   | { t: 'redo' }
   | { t: 'createSketch' }
+  /** Carry out the fix the last error offered (download the compiler, install a library...). */
+  | { t: 'fix' }
+  | { t: 'cancelFix' }
   | { t: 'template'; id: string }
   | { t: 'guide' }
   | { t: 'start' }
@@ -54,7 +59,10 @@ export type OutMsg =
   | { t: 'dirty'; dirty: boolean }
   /** Voltages and currents from the circuit solver: per wire (in project order) and a status per part. */
   | { t: 'electrical'; state: Report['state']; reason?: string; wires: Report['wires']; parts: Report['parts'] }
-  | { t: 'error'; message: string }
+  /** `fix` is the label of a button that puts the error right; `command` is one the person runs themselves. */
+  | { t: 'error'; message: string; fix?: string; command?: string }
+  /** How a fix is getting on: what it is doing and, when it can be measured, how far along (0 to 1). */
+  | { t: 'setup'; state: 'working' | 'done' | 'failed' | 'cancelled'; text: string; fraction?: number }
   | { t: 'shareInfo'; project: Project; sketch: string | null }
   | { t: 'shared'; ok: boolean; message: string }
   | { t: 'prices'; book: PriceBook; file: string }
@@ -64,6 +72,9 @@ export type OutMsg =
 /** Compile the sketch in a folder for a board type ("uno", "mega", ...). */
 type Build = (dir: string, board: string) => Promise<BuildResult>;
 interface Run { engine: Engine; chip: ChipBackend; circuit: Circuit; electrical: Electrical; inst: Instruments; serial: string; lastOutputs: string; lastProblems: string; lastStatusMs: number }
+
+/** A build that could not be made because something is missing from the computer, not wrong in the sketch. */
+class NeedError extends Error { need: Need; constructor(need: Need) { super(need.message); this.need = need; } }
 
 const MS = 1e6;
 const MAX_STEP_MS = 50;           // a stalled host must not make the simulation leap ahead
@@ -99,15 +110,19 @@ export class Session {
   private watcher: fs.FSWatcher | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
   private home: string | undefined;
+  private toolchain: Toolchain | undefined;
+  private offer: Fix | null = null;                 // what the last failed build offered to put right
+  private fixing: AbortController | null = null;    // a fix is being carried out
   private shared = false;           // the folder held other things when it was opened: nothing new is written into it
 
   /**
    * `watch`: upload again whenever the sketch is saved during a run.
    * `ngspice`: the circuit solver's path (default $SHIBO_NGSPICE, else ngspice on the PATH); without it parts show unchecked.
    */
-  constructor(opts: { build?: Build; watch?: boolean; ngspice?: string | null; home?: string } = {}) {
-    this.home = opts.home;
-    this.build = opts.build ?? ((d, b) => buildSketch(d, b)); this.watching = opts.watch ?? false; this.ngspice = opts.ngspice;
+  constructor(opts: { build?: Build; watch?: boolean; ngspice?: string | null; home?: string; toolchain?: Toolchain } = {}) {
+    this.home = opts.home; this.toolchain = opts.toolchain;
+    const tc = opts.toolchain;
+    this.build = opts.build ?? (tc ? (d, b) => tc.build(d, b) : (d, b) => buildSketch(d, b)); this.watching = opts.watch ?? false; this.ngspice = opts.ngspice;
   }
 
   onMessage(cb: (m: OutMsg) => void): void { this.listeners.push(cb); }
@@ -124,6 +139,8 @@ export class Session {
         case 'undo': this.step(this.past, this.future); break;
         case 'redo': this.step(this.future, this.past); break;
         case 'createSketch': this.createSketch(); break;
+        case 'fix': await this.fix(); break;
+        case 'cancelFix': this.fixing?.abort(); break;
         case 'template': this.useTemplate(m.id); break;
         case 'guide': this.writeGuide(); break;
         case 'start': await this.start(); break;
@@ -146,7 +163,37 @@ export class Session {
           if (INSTRUMENT_MESSAGES.has(m.t)) { this.run?.inst.handle(m as InstrumentIn); break; }
           throw new Error(`unknown message ${(m as { t: string }).t}`);
       }
-    } catch (err) { this.send({ t: 'error', message: (err as Error).message }); }
+    } catch (err) {
+      const need = err instanceof NeedError ? err.need : null;
+      if (need?.fix) this.offer = need.fix;
+      this.send({ t: 'error', message: (err as Error).message, ...(need?.label ? { fix: need.label } : {}), ...(need?.command ? { command: need.command } : {}) });
+    }
+  }
+
+  /** Carry out what the last failed build offered, saying how it is getting on, then run the sketch again. */
+  private async fix(): Promise<void> {
+    const offer = this.offer;
+    if (!offer || !this.toolchain || this.fixing) return;
+    const stop = this.fixing = new AbortController();
+    let last = '', sent = 0;
+    const say = (text: string, fraction?: number) => {
+      // A download reports every few kilobytes: pass on a change of step at once, and progress within one a few times a second.
+      const now = Date.now();
+      if (text === last && fraction !== 1 && now - sent < 150) return;
+      last = text; sent = now;
+      this.send({ t: 'setup', state: 'working', text, ...(fraction === undefined ? {} : { fraction }) });
+    };
+    say('Starting');
+    try {
+      await this.toolchain.repair(offer, (s) => say(s.text, s.fraction), stop.signal);
+    } catch (err) {
+      const cancelled = (err as { kind?: string }).kind === 'cancelled' || stop.signal.aborted;
+      this.send({ t: 'setup', state: cancelled ? 'cancelled' : 'failed', text: (err as Error).message });
+      return;
+    } finally { this.fixing = null; }
+    this.offer = null;
+    this.send({ t: 'setup', state: 'done', text: 'Done' });
+    await this.start();
   }
 
   /** Send everything a page needs to draw itself (used when a page connects). */
@@ -238,13 +285,14 @@ export class Session {
     const type = this.project.parts.find((p) => p.id === board.part)!.type;
     if (!runnableBoards.includes(type)) throw new Error(`${board.part} cannot run yet: Shibo runs ${runnableBoards.join(', ')} boards so far`);
     if (this.loadError) throw new Error(this.loadError);
-    this.lastWarnings = [];
+    this.lastWarnings = []; this.offer = null;
     const project = this.project, id = ++this.startId;
     this.starting = true; this.sendStatus('building');
     try {
       const built = await this.build(this.dir, type);
       if (this.disposed) return;
       if (id !== this.startId || project !== this.project) return;        // stopped or edited while building
+      if (built.need) throw new NeedError(built.need);
       if (!built.ok || !built.hex) throw new Error(built.log === NO_SKETCH || built.need || /\berror: /.test(built.log) ? built.log : `The sketch did not build:\n${built.log}`);
       const engine = new Engine();
       const chip = createBackend(type, board.part, built.hex);
