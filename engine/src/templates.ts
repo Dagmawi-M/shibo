@@ -1,6 +1,7 @@
 // Starter projects: a sketch plus a circuit already wired for it.
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { addPart, addWire } from './edit.ts';
 import type { Project } from './project.ts';
 
@@ -94,6 +95,17 @@ export function folderName(name: string): string {
   if (!slug) throw new Error('give the project a name with at least one letter or digit');
   return slug.slice(0, 60);
 }
+
+/**
+ * A folder people keep other things in: the home folder, Desktop, Documents,
+ * Downloads, or the top of the disk. A sketch is never written straight into
+ * one, because editors index the whole folder a sketch sits in.
+ */
+export function sharedFolder(dir: string, home: string = os.homedir()): boolean {
+  const d = path.resolve(dir), h = path.resolve(home);
+  return d === path.parse(d).root || d === h || ['Desktop', 'Documents', 'Downloads'].some((n) => d === path.join(h, n));
+}
+export const OWN_FOLDER = 'Shibo keeps each circuit in a folder of its own, and this one is shared with other things. Use New Project to make one here.';
 
 /** Create `<parent>/<name>/` with a sketch and a circuit. Returns the new folder. Never overwrites. */
 export function createProject(parent: string, name: string, templateId: string): string {

@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { templates, createProject } from '../src/templates.ts';
+import { templates, createProject, sharedFolder } from '../src/templates.ts';
 import { parseProject, validate } from '../src/project.ts';
 import { Session, type OutMsg } from '../src/session.ts';
 import { buildUno } from '../src/build.ts';
@@ -59,4 +59,36 @@ test('the templates do what they say when run', async () => {
 
   const empty = await run('empty'); empty.ticks(4);
   assert.match(empty.out.filter((m) => m.t === 'serial').map((m: any) => m.text).join(''), /Hello from Shibo/); empty.s.dispose();
+});
+
+test('a sketch is never written straight into the home folder or another shared folder', async () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'shibo-home-'));
+  for (const d of [home, path.join(home, 'Desktop'), path.join(home, 'Documents'), path.join(home, 'Downloads'), path.parse(home).root]) assert.equal(sharedFolder(d, home), true, d);
+  for (const d of [path.join(home, 'blink'), path.join(home, 'Documents', 'blink'), path.dirname(home)]) assert.equal(sharedFolder(d, home), false, d);
+
+  const open = async (dir: string) => {
+    const s = new Session({ build: (d) => buildUno(d), home }); const out: OutMsg[] = [];
+    s.onMessage((m) => out.push(m)); await s.handle({ t: 'open', dir });
+    return { s, errors: () => out.filter((m) => m.t === 'error').map((m: any) => m.message) };
+  };
+  const inos = (dir: string) => readdirSync(dir).filter((f) => f.endsWith('.ino'));
+
+  // In the home folder: starting from a template and making a sketch are both refused, and nothing is written.
+  const a = await open(home);
+  await a.s.handle({ t: 'template', id: 'blink' } as any);
+  await a.s.handle({ t: 'createSketch' } as any);
+  assert.equal(a.errors().length, 2); for (const e of a.errors()) assert.match(e, /folder of its own/);
+  assert.deepEqual(inos(home), []); a.s.dispose();
+
+  // In a folder of its own inside home: the same template works.
+  const own = path.join(home, 'blink'); mkdirSync(own);
+  const b = await open(own);
+  await b.s.handle({ t: 'template', id: 'blink' } as any);
+  assert.deepEqual(b.errors(), []); assert.deepEqual(inos(own), ['blink.ino']); b.s.dispose();
+
+  // A sketch that is already in the home folder is still used, not refused.
+  writeFileSync(path.join(home, 'old.ino'), 'void setup() {}\nvoid loop() {}\n');
+  const c = await open(home);
+  await c.s.handle({ t: 'template', id: 'blink' } as any);
+  assert.deepEqual(c.errors(), []); assert.deepEqual(inos(home), ['old.ino']); c.s.dispose();
 });

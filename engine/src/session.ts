@@ -13,7 +13,7 @@ import * as edit from './edit.ts';
 import { buildSketch, NO_SKETCH } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
-import { templates } from './templates.ts';
+import { templates, sharedFolder, OWN_FOLDER } from './templates.ts';
 import { Electrical, Spice, type Report } from './electrical/index.ts';
 import { Instruments, INSTRUMENT_MESSAGES, type InstrumentIn, type InstrumentOut } from './instruments/index.ts';
 import { exportBom, loadPrices, savePrice, PRICES_FILE } from './prices.ts';
@@ -98,12 +98,14 @@ export class Session {
   private watching: boolean;
   private watcher: fs.FSWatcher | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
+  private home: string | undefined;
 
   /**
    * `watch`: upload again whenever the sketch is saved during a run.
    * `ngspice`: the circuit solver's path (default $SHIBO_NGSPICE, else ngspice on the PATH); without it parts show unchecked.
    */
-  constructor(opts: { build?: Build; watch?: boolean; ngspice?: string | null } = {}) {
+  constructor(opts: { build?: Build; watch?: boolean; ngspice?: string | null; home?: string } = {}) {
+    this.home = opts.home;
     this.build = opts.build ?? ((d, b) => buildSketch(d, b)); this.watching = opts.watch ?? false; this.ngspice = opts.ngspice;
   }
 
@@ -321,12 +323,13 @@ export class Session {
     if (!t) throw new Error(`there is no template "${String(id)}"`);
     if (!this.dir) throw new Error('no project folder is open');
     if (this.loadError) throw new Error(this.loadError);
+    if (!this.sketchFile()) this.newSketch();
     this.stop();
     this.past.push(this.project); this.future = [];
     this.project = parseProject(structuredClone(t.project), 'the template'); this.dirty = true;
     let made = '';
     if (!this.sketchFile()) {
-      made = path.join(this.dir, `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`);
+      made = this.newSketch();
       fs.writeFileSync(made, t.sketch, { flag: 'wx' });
     }
     this.sendProject();
@@ -341,6 +344,12 @@ export class Session {
   }
 
   /** The sketch that Run uploads: the first .ino in the folder, by name. */
+  /** Where a new sketch goes. Refuses a folder shared with other things. */
+  private newSketch(): string {
+    if (sharedFolder(this.dir, this.home)) throw new Error(OWN_FOLDER);
+    return path.join(this.dir, `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`);
+  }
+
   private sketchFile(): string | null {
     try { return this.dir ? fs.readdirSync(this.dir).filter((f) => f.endsWith('.ino')).sort()[0] ?? null : null; } catch { return null; }
   }
@@ -364,6 +373,7 @@ export class Session {
     try { next = parseProject(raw, 'the link'); } catch (err) { return refuse((err as Error).message); }
     if (sketch != null && (typeof sketch !== 'string' || sketch.length > MAX_SKETCH)) return refuse('the sketch in the link is not usable');
     const file = this.sketchFile(), old = this.sketchText();
+    if (typeof sketch === 'string' && !file && sharedFolder(this.dir, this.home)) return refuse(OWN_FOLDER);
     const replaces = typeof sketch === 'string' && old !== null && old !== sketch && old.trim() !== '';
     if (embed && (this.dirty || replaces)) return refuse('this Shibo has other work open, so the embed will not replace it. Use "Open in Shibo" to load the circuit.');
     this.stop();
@@ -380,7 +390,7 @@ export class Session {
         fs.copyFileSync(path.join(this.dir, file!), kept);
         note += ` Your old sketch was kept as .shibo-backup/${path.basename(kept)}.`;
       }
-      const target = file ?? `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`;
+      const target = file ?? path.basename(this.newSketch());
       fs.writeFileSync(path.join(this.dir, target), sketch);
     }
     this.sendProject();
@@ -391,7 +401,7 @@ export class Session {
     if (!this.dir) throw new Error('no project folder is open');
     const existing = this.sketchFile();
     if (existing) throw new Error(`${existing} is already here; it was left as it is`);
-    const file = path.join(this.dir, `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`);
+    const file = this.newSketch();
     fs.writeFileSync(file, generateSketch(this.project), { flag: 'wx' });      // wx: never over an existing file
     this.sendProject();
     this.send({ t: 'sketchCreated', path: file });

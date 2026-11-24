@@ -3,11 +3,12 @@
 // webview channel instead of HTTP.
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { Session, type InMsg } from '../../engine/src/session.ts';
 import { buildSketch } from '../../engine/src/build.ts';
-import { createProject, folderName, templates } from '../../engine/src/templates.ts';
+import { createProject, folderName, sharedFolder, templates } from '../../engine/src/templates.ts';
 
 const TICK_MS = 16;
 const panels = new Map<string, vscode.WebviewPanel>();
@@ -24,20 +25,26 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!picked?.[0]) return;
       dir = picked[0].fsPath;
     }
+    // A shared folder (home, Desktop...) that is not already a project: make the project inside it instead.
+    if (sharedFolder(dir) && !fs.existsSync(path.join(dir, 'shibo.json'))) {
+      const go = await vscode.window.showInformationMessage(`Shibo keeps each circuit in a folder of its own. Make a new project inside ${path.basename(dir) || dir}?`, { modal: true }, 'New Project');
+      if (go) await vscode.commands.executeCommand('shibo.newProject', dir);
+      return;
+    }
     open(context, dir);
   }));
 
-  context.subscriptions.push(vscode.commands.registerCommand('shibo.newProject', async () => {
+  context.subscriptions.push(vscode.commands.registerCommand('shibo.newProject', async (inside?: unknown) => {
     const name = await vscode.window.showInputBox({ title: 'New Shibo project', prompt: 'Project name', placeHolder: 'my-first-circuit',
       validateInput: (v) => { try { folderName(v); return undefined; } catch (err) { return (err as Error).message; } } });
     if (!name) return;
     const pick = await vscode.window.showQuickPick(templates.map((t) => ({ label: t.label, detail: t.detail, id: t.id })), { title: 'Start from', placeHolder: 'Pick a starting circuit' });
     if (!pick) return;
-    const parent = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: 'Create the project here',
-      defaultUri: vscode.Uri.file(here() ? path.dirname(here()!) : os.homedir()) });
-    if (!parent?.[0]) return;
+    const parent = typeof inside === 'string' ? inside : (await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: 'Create the project here',
+      defaultUri: vscode.Uri.file(here() ? path.dirname(here()!) : os.homedir()) }))?.[0]?.fsPath;
+    if (!parent) return;
     let dir: string;
-    try { dir = createProject(parent[0].fsPath, name, pick.id); }
+    try { dir = createProject(parent, name, pick.id); }
     catch (err) { void vscode.window.showErrorMessage(`Shibo: ${(err as Error).message}`); return; }
     // Opening a folder reloads the window, so note that the simulator should open once it has.
     await context.globalState.update(REOPEN, dir);
