@@ -96,16 +96,56 @@ export function folderName(name: string): string {
   return slug.slice(0, 60);
 }
 
-/**
- * A folder people keep other things in: the home folder, Desktop, Documents,
- * Downloads, or the top of the disk. A sketch is never written straight into
- * one, because editors index the whole folder a sketch sits in.
- */
-export function sharedFolder(dir: string, home: string = os.homedir()): boolean {
-  const d = path.resolve(dir), h = path.resolve(home);
-  return d === path.parse(d).root || d === h || ['Desktop', 'Documents', 'Downloads'].some((n) => d === path.join(h, n));
+// Editors index the whole folder a sketch sits in, so a sketch dropped among
+// other things can make a C/C++ extension read all of them. A new sketch or
+// circuit therefore only goes into a folder that is empty or already a project.
+
+/** The same folder always gives the same text: links are followed, and letter case is ignored where the disk ignores it. */
+function place(p: string): string {
+  let r = path.resolve(p), rest = '';
+  for (;;) {                                                   // a folder that is not there yet: follow the links as far as the path exists
+    try { r = path.join(fs.realpathSync(r), rest); break; }
+    catch { const up = path.dirname(r); if (up === r) { r = path.join(r, rest); break; } rest = path.join(path.basename(r), rest); r = up; }
+  }
+  return process.platform === 'win32' || process.platform === 'darwin' ? r.toLowerCase() : r;
 }
-export const OWN_FOLDER = 'Shibo keeps each circuit in a folder of its own, and this one is shared with other things. Use New Project to make one here.';
+
+/**
+ * A folder people keep other things in whatever is in it right now: the top
+ * of the disk, the home folder, and Desktop, Documents, Downloads and the
+ * like, under the names this system gives them. No sketch is ever written
+ * straight into one.
+ */
+export function sharedFolder(dir: string, home: string = os.homedir(), env: Record<string, string | undefined> = process.env): boolean {
+  const d = place(dir);
+  if (d === place(path.parse(path.resolve(dir)).root)) return true;
+  const shared = [home, ...['Desktop', 'Documents', 'Downloads', 'Pictures', 'Music', 'Videos', 'Public', 'Templates'].map((n) => path.join(home, n))];
+  try {                                                        // Linux: where the desktop and the rest really are
+    for (const m of fs.readFileSync(path.join(home, '.config', 'user-dirs.dirs'), 'utf8').matchAll(/^XDG_\w+_DIR="(.+)"\s*$/gm)) shared.push(m[1].replace(/^\$HOME/, home));
+  } catch { /* no such list here */ }
+  for (const k of ['OneDrive', 'OneDriveConsumer', 'OneDriveCommercial']) {   // Windows keeps Desktop and Documents in here
+    const c = env[k];
+    if (c) shared.push(c, path.join(c, 'Desktop'), path.join(c, 'Documents'));
+  }
+  return shared.some((f) => place(f) === d);
+}
+
+/** Files that do not make a folder "in use": hidden ones, what a new repository starts with, and what Shibo writes itself. */
+const HARMLESS = /^(\.|(readme|licen[sc]e|copying)(\.|$)|(wiring-guide\.html|prices\.json|parts-list\.(csv|md))$)/i;
+
+/**
+ * What a folder is to Shibo:
+ * - 'project': a circuit or a sketch is already in it, so it is opened as it is;
+ * - 'empty': nothing of anyone's is in it, so a new circuit and sketch may go there;
+ * - 'shared': it holds other things, so a project gets a folder of its own inside it.
+ */
+export function folderKind(dir: string, home: string = os.homedir()): 'project' | 'empty' | 'shared' {
+  let names: string[] = [];
+  try { names = fs.readdirSync(dir); } catch { /* not there yet: nothing is in it */ }
+  if (names.some((n) => n === 'shibo.json' || n === 'diagram.json' || n.endsWith('.ino'))) return 'project';
+  return sharedFolder(dir, home) || !names.every((n) => HARMLESS.test(n)) ? 'shared' : 'empty';
+}
+export const OWN_FOLDER = 'Shibo keeps each circuit in a folder of its own, and this folder holds other things. Make a new folder for the circuit (New Project does this) and open that.';
 
 /** Create `<parent>/<name>/` with a sketch and a circuit. Returns the new folder. Never overwrites. */
 export function createProject(parent: string, name: string, templateId: string): string {

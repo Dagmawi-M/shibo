@@ -13,7 +13,7 @@ import * as edit from './edit.ts';
 import { buildSketch, NO_SKETCH } from './build.ts';
 import { generateSketch } from './sketchgen.ts';
 import { generateGuide } from './guide.ts';
-import { templates, sharedFolder, OWN_FOLDER } from './templates.ts';
+import { templates, sharedFolder, folderKind, OWN_FOLDER } from './templates.ts';
 import { Electrical, Spice, type Report } from './electrical/index.ts';
 import { Instruments, INSTRUMENT_MESSAGES, type InstrumentIn, type InstrumentOut } from './instruments/index.ts';
 import { exportBom, loadPrices, savePrice, PRICES_FILE } from './prices.ts';
@@ -99,6 +99,7 @@ export class Session {
   private watcher: fs.FSWatcher | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
   private home: string | undefined;
+  private shared = false;           // the folder held other things when it was opened: nothing new is written into it
 
   /**
    * `watch`: upload again whenever the sketch is saved during a run.
@@ -162,6 +163,7 @@ export class Session {
     this.stop();
     const own = path.join(dir, FILE), wokwi = path.join(dir, 'diagram.json');
     this.dir = dir; this.dirty = false; this.loadError = ''; this.past = []; this.future = [];
+    this.shared = folderKind(dir, this.home) === 'shared';
     this.watch();
     this.project = { version: 1, parts: [], wires: [], boards: [] };
     const source = fs.existsSync(own) ? own : fs.existsSync(wokwi) ? wokwi : '';
@@ -220,6 +222,7 @@ export class Session {
   private save(): void {
     if (!this.dir) throw new Error('no project folder is open');
     if (this.loadError) throw new Error(this.loadError);
+    if (this.shared) throw new Error(OWN_FOLDER);
     fs.writeFileSync(path.join(this.dir, FILE), JSON.stringify(this.project, null, 2) + '\n');
     this.dirty = false;
     this.send({ t: 'dirty', dirty: false });      // the circuit did not change, so the page must not redraw it
@@ -344,9 +347,10 @@ export class Session {
   }
 
   /** The sketch that Run uploads: the first .ino in the folder, by name. */
-  /** Where a new sketch goes. Refuses a folder shared with other things. */
+  /** Where a new sketch goes. Refuses a folder that holds other things, and the home folder even when a circuit is saved there. */
+  private ownFolder(): boolean { return !this.shared && !sharedFolder(this.dir, this.home); }
   private newSketch(): string {
-    if (sharedFolder(this.dir, this.home)) throw new Error(OWN_FOLDER);
+    if (!this.ownFolder()) throw new Error(OWN_FOLDER);
     return path.join(this.dir, `${path.basename(this.dir).replace(/[^\w-]+/g, '-') || 'sketch'}.ino`);
   }
 
@@ -373,7 +377,7 @@ export class Session {
     try { next = parseProject(raw, 'the link'); } catch (err) { return refuse((err as Error).message); }
     if (sketch != null && (typeof sketch !== 'string' || sketch.length > MAX_SKETCH)) return refuse('the sketch in the link is not usable');
     const file = this.sketchFile(), old = this.sketchText();
-    if (typeof sketch === 'string' && !file && sharedFolder(this.dir, this.home)) return refuse(OWN_FOLDER);
+    if (typeof sketch === 'string' && !file && !this.ownFolder()) return refuse(OWN_FOLDER);
     const replaces = typeof sketch === 'string' && old !== null && old !== sketch && old.trim() !== '';
     if (embed && (this.dirty || replaces)) return refuse('this Shibo has other work open, so the embed will not replace it. Use "Open in Shibo" to load the circuit.');
     this.stop();

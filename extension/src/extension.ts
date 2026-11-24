@@ -3,12 +3,11 @@
 // webview channel instead of HTTP.
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import * as os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { Session, type InMsg } from '../../engine/src/session.ts';
 import { buildSketch } from '../../engine/src/build.ts';
-import { createProject, folderName, sharedFolder, templates } from '../../engine/src/templates.ts';
+import { createProject, folderName, folderKind, templates } from '../../engine/src/templates.ts';
 
 const TICK_MS = 16;
 const panels = new Map<string, vscode.WebviewPanel>();
@@ -25,9 +24,9 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!picked?.[0]) return;
       dir = picked[0].fsPath;
     }
-    // A shared folder (home, Desktop...) that is not already a project: make the project inside it instead.
-    if (sharedFolder(dir) && !fs.existsSync(path.join(dir, 'shibo.json'))) {
-      const go = await vscode.window.showInformationMessage(`Shibo keeps each circuit in a folder of its own. Make a new project inside ${path.basename(dir) || dir}?`, { modal: true }, 'New Project');
+    // A folder that holds other things and no circuit or sketch yet: make the project inside it instead.
+    if (folderKind(dir) === 'shared') {
+      const go = await vscode.window.showInformationMessage(`Shibo keeps each circuit in a folder of its own, and ${path.basename(dir) || dir} holds other things. Make a new project inside it?`, { modal: true }, 'New Project');
       if (go) await vscode.commands.executeCommand('shibo.newProject', dir);
       return;
     }

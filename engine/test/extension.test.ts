@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import Module from 'node:module';
-import { mkdtempSync, writeFileSync, cpSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, cpSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const built = new URL('../../extension/dist/extension.js', import.meta.url).pathname;
 
 function harness(dir: string) {
-  const commands: Record<string, () => Promise<void>> = {};
+  const commands: Record<string, (...args: any[]) => Promise<void>> = {};
   const posted: any[] = []; let receive: (m: any) => void = () => {}; let dispose: () => void = () => {};
   const panel = {
     visible: true, html: '', title: '', reveal() { panel.revealed++; }, revealed: 0,
@@ -21,7 +21,7 @@ function harness(dir: string) {
     onDidDispose: (cb: any) => { dispose = cb; }, dispose() { dispose(); },
   };
   let created = 0; const warnings: string[] = []; const errors: string[] = []; const executed: any[][] = []; const views: string[] = [];
-  const answers: { name?: string; template?: string; parent?: string } = {};
+  const answers: { name?: string; template?: string; parent?: string; info?: string } = {}; const asked: string[] = [];
   const statusBar: any = { show() { statusBar.shown = true; }, hide() { statusBar.shown = false; }, dispose() {} };
   const state = new Map<string, unknown>();
   const vscode = {
@@ -30,11 +30,11 @@ function harness(dir: string) {
     workspace: { workspaceFolders: [{ uri: { fsPath: dir } }] },
     window: { createWebviewPanel: () => { created++; return panel; }, showOpenDialog: async () => (answers.parent ? [{ fsPath: answers.parent }] : undefined),
       showInputBox: async () => answers.name, showQuickPick: async (items: any[]) => items.find((i) => i.id === answers.template),
-      showErrorMessage: async (text: string) => { errors.push(text); }, showInformationMessage: async () => undefined,
+      showErrorMessage: async (text: string) => { errors.push(text); }, showInformationMessage: async (text: string) => { asked.push(text); return answers.info; },
       registerTreeDataProvider: (id: string) => { views.push(id); return { dispose() {} }; },
       createStatusBarItem: () => statusBar,
       showWarningMessage: async (text: string, ...choices: string[]) => { warnings.push(text); return choices.includes('Save') ? 'Save' : undefined; } },
-    commands: { registerCommand: (id: string, fn: any) => { commands[id] = fn; return { dispose() {} }; }, executeCommand: async (id: string, ...args: any[]) => { executed.push([id, ...args]); } },
+    commands: { registerCommand: (id: string, fn: any) => { commands[id] = fn; return { dispose() {} }; }, executeCommand: async (id: string, ...args: any[]) => { executed.push([id, ...args]); if (commands[id]) await (commands[id] as any)(...args); } },
     StatusBarAlignment: { Left: 1 }, env: { openExternal: async () => true },
   };
   const load = (Module as any)._load;
@@ -46,7 +46,7 @@ function harness(dir: string) {
   const context = { subscriptions: [], extensionUri: { fsPath: path.dirname(path.dirname(built)) }, globalStorageUri: { fsPath: storage }, globalState: { get: (k: string) => state.get(k), update: async (k: string, v: unknown) => { state.set(k, v); } } };
   ext.activate(context);
   const wait = async (pred: () => boolean, what: string, ms = 60000) => { const t = Date.now(); while (!pred()) { if (Date.now() - t > ms) throw new Error('timed out: ' + what + '; got ' + posted.map((m) => m.t).join(',')); await new Promise((r) => setTimeout(r, 50)); } };
-  return { commands, posted, panel, send: (m: any) => receive(m), wait, created: () => created, ext, warnings, errors, executed, views, answers, statusBar, state, context, activateAgain: () => ext.activate(context) };
+  return { asked, commands, posted, panel, send: (m: any) => receive(m), wait, created: () => created, ext, warnings, errors, executed, views, answers, statusBar, state, context, activateAgain: () => ext.activate(context) };
 }
 
 test('the extension opens a panel, relays messages, runs, and cleans up', async () => {
@@ -111,4 +111,42 @@ test('New Project creates the folder from a template and opens it, then the simu
   const n = h.executed.length;
   await h.commands['shibo.newProject']();
   assert.equal(h.executed.length, n, 'cancelling the name prompt does nothing');
+});
+
+test('Open on a folder full of other things offers a new project inside it instead of writing there', async () => {
+  const before = process.env.HOME; const home = mkdtempSync(path.join(tmpdir(), 'shibo-xh-'));
+  process.env.HOME = home;
+  try {
+    // A folder of other work, on no list.
+    const code = path.join(home, 'code'); mkdirSync(path.join(code, 'repo-a'), { recursive: true });
+    let h = harness(code);
+    await h.commands['shibo.open']();
+    assert.equal(h.created(), 0, 'no simulator is opened on the shared folder');
+    assert.match(h.asked[0], /folder of its own.*code/);
+    assert.deepEqual(h.executed, [], 'saying no does nothing');
+
+    // Saying yes runs New Project inside that folder, with no question about where.
+    h = harness(code); h.answers.info = 'New Project'; h.answers.name = 'Blink One'; h.answers.template = 'blink';
+    await h.commands['shibo.open']();
+    const made = path.join(code, 'blink-one');
+    assert.ok(existsSync(path.join(made, 'blink-one.ino')) && existsSync(path.join(made, 'shibo.json')));
+    assert.equal(h.executed.at(-1)![0], 'vscode.openFolder'); assert.equal(h.executed.at(-1)![1].fsPath, made);
+    assert.deepEqual(readdirSync(code).sort(), ['blink-one', 'repo-a']);
+
+    // The home folder itself is asked about too...
+    h = harness(home); await h.commands['shibo.open']();
+    assert.equal(h.created(), 0); assert.equal(h.asked.length, 1);
+
+    // ...unless a sketch or a circuit is already there: then it opens as it always did.
+    writeFileSync(path.join(home, 'old.ino'), 'void setup() {}\nvoid loop() {}\n');
+    h = harness(home); await h.commands['shibo.open']();
+    assert.equal(h.created(), 1, 'a folder with a sketch in it opens'); assert.deepEqual(h.asked, []);
+    h.panel.dispose();
+
+    // An empty folder opens straight away.
+    const empty = path.join(home, 'empty'); mkdirSync(empty);
+    h = harness(empty); await h.commands['shibo.open']();
+    assert.equal(h.created(), 1); assert.deepEqual(h.asked, []);
+    h.panel.dispose();
+  } finally { process.env.HOME = before; }
 });
