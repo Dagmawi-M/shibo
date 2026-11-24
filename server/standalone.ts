@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type InMsg, type OutMsg } from '../engine/src/session.ts';
 import { buildSketch, type BuildResult } from '../engine/src/build.ts';
-import type { Toolchain } from '../engine/src/toolchain.ts';
+import { Toolchain } from '../engine/src/toolchain.ts';
+import type { Where } from '../engine/src/compiler.ts';
 
 const HOST = '127.0.0.1';
 const TICK_MS = 16;
@@ -101,6 +102,15 @@ export function startServer(opts: { dir: string; port: number; build?: (dir: str
   });
 }
 
+/**
+ * The toolchain the app uses when run from the command line: builds, and the
+ * compiler Shibo downloads if there is none, are kept under .build in the
+ * repository (`root`). `where` is for tests.
+ */
+export function standaloneToolchain(root: string = path.resolve(import.meta.dirname, '..'), where?: Where): Toolchain {
+  return new Toolchain({ ownDir: path.join(root, '.build', 'compiler'), cacheDir: path.join(root, '.build'), where });
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   const args = process.argv.slice(2);
   const i = args.indexOf('--port');
@@ -110,7 +120,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
   const full = path.resolve(dir);
   if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) { console.error(`not a folder: ${full}`); process.exit(2); }
   if (!fs.existsSync(path.resolve(import.meta.dirname, '..', 'dist', 'app', 'app.js'))) { console.error('the page is not built yet: run "npm run build" first'); process.exit(2); }
-  startServer({ dir: full, port }).then(
+  startServer({ dir: full, port, toolchain: standaloneToolchain() }).then(
     (s) => console.log(`shibo: ${full}\nopen http://${s.host}:${s.port}`),
     (err) => { console.error(err.code === 'EADDRINUSE' ? `port ${port} is already in use; pick another with --port` : err.message); process.exit(1); },
   );

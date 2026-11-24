@@ -18,7 +18,10 @@ case "$1 $2" in
     [ "$FAKE_MODE" = core-fails ] && { echo "Error during install: something broke" >&2; exit 1; }
     echo "Downloading packages..."; echo "arduino:avr-gcc@7.3.0 34.00 MiB / 34.00 MiB 100.00%"
     d="${ARDUINO_DIRECTORIES_DATA:-$FAKE_DATA}/packages/$(echo "$3" | cut -d: -f1)/hardware/$(echo "$3" | cut -d: -f2)/1.0.0"
-    mkdir -p "$d"; echo "Platform $3 installed"; exit 0 ;;
+    mkdir -p "$d"; echo "Platform $3 installed"
+    # like the real one, it leaves the archives it downloaded behind
+    [ -n "$ARDUINO_DIRECTORIES_DOWNLOADS" ] && mkdir -p "$ARDUINO_DIRECTORIES_DOWNLOADS/packages" && echo archive > "$ARDUINO_DIRECTORIES_DOWNLOADS/packages/avr-gcc.tar.bz2"
+    exit 0 ;;
   "lib install") [ -n "$FAKE_STATE" ] && : > "$FAKE_STATE/lib-$3"; echo "Installed $3"; exit 0 ;;
 esac
 if [ "$1" = "--no-color" ] && [ "$2" = compile ]; then

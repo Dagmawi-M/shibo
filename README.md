@@ -32,7 +32,7 @@ Every board and part has a picture in the **[parts gallery](gallery/README.md)**
 - **Modules:** Infrared remote, Rotary phone dial, Real-time clock (DS1307), Real-time clock (DS3231), EEPROM (24C32), I/O expander (PCF8574), Shift register out (74HC595), Shift register in (74HC165), Analog multiplexer (CD4051), microSD card, Bluetooth (HC-05), GPS (NEO-6M), RFID reader (RC522), Radio (nRF24L01).
 - **Displays:** LCD 16x2, LCD 20x4, OLED display (SSD1306), NeoPixel LED, NeoPixel ring, NeoPixel matrix, NeoPixel strip (WS2812, chainable DOUT to DIN), LED matrix 8x8 (MAX7219, chainable, works with LedControl), 4-digit display (TM1637, works with TM1637Display), Colour TFT (ILI9341).
 
-Boards so far: Arduino Uno, Nano, Mega 2560 and ATtiny85. The ATtiny85 needs ATTinyCore (`arduino-cli core install ATTinyCore:avr` with its board-manager URL) and builds as `ATTinyCore:avr:attinyx5micr:sketchclock=16pll`; USB (V-USB/DigiKeyboard) is not simulated. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
+Boards so far: Arduino Uno, Nano, Mega 2560 and ATtiny85. The ATtiny85 needs ATTinyCore, which Shibo does not install by itself because it comes from a third-party server (**Shibo: Check Setup** gives you the command to run); it builds as `ATTinyCore:avr:attinyx5micr:sketchclock=16pll`; USB (V-USB/DigiKeyboard) is not simulated. Each compiles for its own board (`arduino:avr:uno`, `arduino:avr:nano`, `arduino:avr:mega`). ESP32 and Raspberry Pi Pico are planned. On the Mega, the serial monitor shows `Serial`; Serial1 to Serial3 run in the sketch but nothing in the catalog talks on them yet.
 
 ## Parts list
 
@@ -66,10 +66,12 @@ git clone https://github.com/Dagmawi-M/shibo.git
 cd shibo
 npm install
 npm run package
-code --install-extension extension/shibo-0.1.4.vsix
+code --install-extension extension/shibo-0.2.0.vsix
 ```
 
-You also need [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) on your PATH with the AVR core:
+Shibo compiles your sketch with the Arduino compiler (`arduino-cli`). If it is already on your computer, on its own or inside the Arduino IDE, Shibo finds it. If it is not, Shibo offers to download it the first time you run a sketch (about 80 MB, one time), checks the download against the checksum Arduino publishes, and keeps it in its own folder. After that everything works offline. When a sketch needs an Arduino library that is not installed, Shibo names it and installs it at a click. **Shibo: Check Setup** shows what is installed at any time.
+
+Prefer to install the compiler yourself? Follow [Arduino's guide](https://arduino.github.io/arduino-cli/latest/installation/), then:
 
 ```
 arduino-cli core install arduino:avr

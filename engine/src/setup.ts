@@ -173,6 +173,8 @@ export async function installCompiler(ownDir: string, o: SetupOptions = {}): Pro
       fs.writeFileSync(checked, asset.sha256 + '\n');
     }
     await installCore(own, 'arduino:avr', o);
+    // arduino-cli keeps every archive it downloaded; unpacked, they are only taking up room.
+    fs.rmSync(own.env.ARDUINO_DIRECTORIES_DOWNLOADS, { recursive: true, force: true });
     fs.writeFileSync(path.join(ownDir, 'ready'), JSON.stringify({ version: CLI_VERSION }) + '\n');
     return own;
   } catch (err) {

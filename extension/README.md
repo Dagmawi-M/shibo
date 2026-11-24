@@ -52,8 +52,11 @@ Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colo
 
 ## Needs
 
-- [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) on your PATH, with the AVR core: `arduino-cli core install arduino:avr`.
+- **The Arduino compiler** (`arduino-cli`). If it is already on your computer, on its own or inside the Arduino IDE, Shibo finds it. If it is not, Shibo offers to download it the first time you run a sketch (about 80 MB, one time), checks the download against the checksum Arduino publishes, and keeps it in its own folder. After that everything works offline.
+- **Arduino libraries**, for the parts that use them (Servo, LiquidCrystal, DHT and others). When a sketch needs one that is not installed, Shibo names it and installs it at a click.
 - Optional: [ngspice](https://ngspice.sourceforge.io/) on your PATH (or set `SHIBO_NGSPICE` to its path) for the voltage and current checks.
+
+Run **Shibo: Check Setup** at any time to see what is installed and what is missing. Prefer to install the compiler yourself? Follow [Arduino's guide](https://arduino.github.io/arduino-cli/latest/installation/), then `arduino-cli core install arduino:avr`.
 
 ## Commands
 
@@ -61,7 +64,9 @@ Displays show what your sketch draws: text on the LCDs, pixels on the OLED, colo
 |---|---|
 | Shibo: New Project | Creates a folder with a sketch and a wired circuit |
 | Shibo: Open Simulator | Opens the simulator for the current folder |
-| Shibo: How to Install arduino-cli | Opens the install guide |
+| Shibo: Check Setup | Shows what is installed (compiler, board packages, circuit checker) and installs what is missing |
+| Shibo: Remove Downloaded Compiler | Deletes the compiler Shibo downloaded, to free the disk space |
+| Shibo: How to Install arduino-cli Yourself | Opens Arduino's install guide |
 
 ## Limits in this version
 

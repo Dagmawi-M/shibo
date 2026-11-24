@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { startServer } from '../../server/standalone.ts';
+import { startServer, standaloneToolchain } from '../../server/standalone.ts';
+import { makeRig, chain } from './helpers/setup-rig.ts';
+import { ownCompiler } from '../src/compiler.ts';
+import { createProject } from '../src/templates.ts';
 
 const hex = readFileSync(new URL('./fixtures/toggle.hex', import.meta.url), 'utf8');
 function folder(): string {
@@ -73,4 +76,29 @@ test('refuses requests that did not come from this machine\'s own page', async (
     assert.equal((await request(srv.port, 'POST', '/msg', { t: 'stop' }, { origin: 'http://evil.example' })).status, 403);
     assert.equal((await request(srv.port, 'POST', '/msg', undefined, { 'content-type': 'application/json' })).status, 400);
   } finally { await srv.close(); }
+});
+
+test('the standalone app offers the same fix: with nothing installed, "fix" ends with the sketch running', { skip: process.platform === 'win32' }, async () => {
+  const rig = await makeRig();
+  const srv = await startServer({ dir: createProject(rig.dir, 'blink', 'blink'), port: 0, toolchain: chain(rig) });
+  try {
+    const ev = events(srv.port);
+    await ev.until((m) => m.some((x) => x.t === 'project'));
+    await request(srv.port, 'POST', '/msg', { t: 'start' });
+    await ev.until((m) => m.some((x) => x.t === 'error'));
+    assert.equal(ev.msgs.find((x) => x.t === 'error').fix, 'Download the Arduino compiler (about 80 MB, one time)');
+    await request(srv.port, 'POST', '/msg', { t: 'fix' });
+    await ev.until((m) => m.some((x) => x.t === 'setup' && x.state === 'done'));
+    await ev.until((m) => m.filter((x) => x.t === 'status').at(-1).state === 'running');
+    ev.close();
+  } finally { await srv.close(); await rig.close(); }
+});
+
+test('run from the command line, the app keeps its downloaded compiler under .build in the repository', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'shibo-root-'));
+  const where = { env: { PATH: '' }, home: path.join(root, 'no-home'), platform: 'linux' as const };
+  assert.equal(standaloneToolchain(root, where).find(), null);
+  const own = ownCompiler(path.join(root, '.build', 'compiler'), 'linux');
+  mkdirSync(path.dirname(own.cli), { recursive: true }); writeFileSync(own.cli, '#!/bin/sh\n', { mode: 0o755 }); writeFileSync(path.join(root, '.build', 'compiler', 'ready'), '{}');
+  assert.deepEqual([standaloneToolchain(root, where).find()?.origin, standaloneToolchain(root, where).find()?.cli], ['own', own.cli]);
 });

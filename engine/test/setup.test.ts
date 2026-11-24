@@ -41,6 +41,7 @@ test('setup downloads the compiler, installs the board package, and says how far
     assert.ok(steps.every((s) => s.text && (s.fraction === undefined || (s.fraction >= 0 && s.fraction <= 1))));
     assert.ok(steps.some((s) => /board package/i.test(s.text)));
     assert.deepEqual(leftovers(rig.ownDir), []);
+    assert.equal(existsSync(path.join(rig.ownDir, 'staging')), false, 'the archives the board package came in are not kept');
     assert.ok(folderSize(rig.ownDir) > 0);
     // Doing it again is harmless and fetches nothing new.
     await installCompiler(rig.ownDir, rig.setup);
