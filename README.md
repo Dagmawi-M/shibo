@@ -66,7 +66,7 @@ git clone https://github.com/Dagmawi-M/shibo.git
 cd shibo
 npm install
 npm run package
-code --install-extension extension/shibo-0.1.2.vsix
+code --install-extension extension/shibo-0.1.3.vsix
 ```
 
 You also need [arduino-cli](https://arduino.github.io/arduino-cli/latest/installation/) on your PATH with the AVR core:
