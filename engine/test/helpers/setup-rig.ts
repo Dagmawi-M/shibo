@@ -2,10 +2,11 @@
 // whole "set up for me" path can be tested without the network.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdtempSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Toolchain } from '../../src/toolchain.ts';
 
 export const FAKE_CLI = path.resolve(import.meta.dirname, '..', 'fixtures', 'fake-cli.sh');
 
@@ -56,7 +57,21 @@ export async function makeRig(): Promise<Rig> {
     hits: () => hits,
     commands: () => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean) : []),
     release: () => { for (const r of held.splice(0)) r.destroy(); },
-    close: () => new Promise<void>((r) => { for (const h of held.splice(0)) h.destroy(); for (const k of ['FAKE_LOG', 'FAKE_MODE', 'FAKE_STATE', 'FAKE_HEX']) delete process.env[k]; server.closeAllConnections(); server.close(() => r()); }),
+    close: () => new Promise<void>((r) => { for (const h of held.splice(0)) h.destroy(); for (const k of ['FAKE_LOG', 'FAKE_MODE', 'FAKE_STATE', 'FAKE_HEX', 'FAKE_DATA']) delete process.env[k]; server.closeAllConnections(); server.close(() => r()); }),
   });
   return rig;
 }
+
+/** A toolchain that can only see what the test put there: nothing of this computer's. `path` is its whole PATH. */
+export const chain = (rig: Rig, more: { path?: string } = {}) => new Toolchain({
+  ownDir: rig.ownDir, cacheDir: path.join(rig.dir, 'cache'), setup: rig.setup,
+  where: { env: { PATH: more.path ?? '' }, home: path.join(rig.dir, 'no-home'), platform: 'linux' },
+});
+
+/** Someone's own compiler in a folder to put on the PATH, with its data elsewhere; `installed()` gives it the Arduino board package. */
+export const theirs = (rig: Rig) => {
+  const bin = path.join(rig.dir, 'their bin'); mkdirSync(bin, { recursive: true });
+  copyFileSync(FAKE_CLI, path.join(bin, 'arduino-cli')); chmodSync(path.join(bin, 'arduino-cli'), 0o755);
+  process.env.FAKE_DATA = path.join(rig.dir, 'their data');
+  return { bin, data: process.env.FAKE_DATA, installed: () => mkdirSync(path.join(rig.dir, 'their data', 'packages', 'arduino', 'hardware', 'avr', '1.8.8'), { recursive: true }) };
+};

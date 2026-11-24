@@ -122,6 +122,10 @@ let wireFrom: string | null = null;
 let pointer: [number, number] = [0, 0];
 let problems: string[] = [];
 let lastError = '';
+// What the last error offers: a fix Shibo carries out at a press (the button's label), or a command for the person to run.
+let lastFix = '', lastCommand = '';
+// A fix that is being carried out: what it is doing and how far along.
+let setup: { text: string; fraction?: number } | null = null;
 let renderToken = 0;
 let lastOutputs: Record<string, Record<string, unknown>> = {};
 let templates: { id: string; label: string; detail: string }[] = [];
@@ -175,7 +179,7 @@ link.onMessage((m) => {
       break;
     case 'status': {
       const was = state; state = m.state; timeMs = m.timeMs;
-      if (state === 'building') { $('serial').textContent = ''; lastError = ''; drawProblems(); }
+      if (state === 'building') { $('serial').textContent = ''; lastError = ''; lastFix = ''; lastCommand = ''; drawProblems(); }
       if (state === 'running' && was !== 'running') { cancelWire(); sendControls(); }
       if (state !== 'running' && was === 'running') { showOutputs({}); meter = null; drawMeter(); }
       canvas.classList.toggle('running', state === 'running');
@@ -192,7 +196,13 @@ link.onMessage((m) => {
     }
     case 'electrical': meter = m as ElectricalMsg; drawMeter(); break;
     case 'problems': problems = m.items; drawProblems(); break;
-    case 'error': lastError = m.message; drawProblems(); break;
+    case 'error': lastError = m.message; lastFix = m.fix ?? ''; lastCommand = m.command ?? ''; drawProblems(); break;
+    case 'setup':
+      // The offer stays after a fix that failed or was cancelled, so the same button is "try again".
+      if (m.state === 'working') setup = { text: m.text, fraction: m.fraction };
+      else { setup = null; if (m.state === 'done') { lastError = ''; lastFix = ''; } else lastError = m.text; }
+      drawBar(); drawProblems();
+      break;
     case 'guideCreated': hint(`Wrote ${String(m.path).split(/[\\/]/).pop()} in the project folder. Open it in a browser to print it.`); break;
     case 'sketchCreated': hint(`Wrote ${String(m.path).split(/[\\/]/).pop()} from your wiring. Open it to change what the board does.`); break;
   }
@@ -202,7 +212,7 @@ link.onUp(() => { if ($('hint').textContent === LOST) hint(''); });
 
 // ---------- top bar ----------
 function drawBar(): void {
-  ($('run') as HTMLButtonElement).disabled = state !== 'idle';
+  ($('run') as HTMLButtonElement).disabled = state !== 'idle' || setup !== null;
   ($('stop') as HTMLButtonElement).disabled = state !== 'running';
   ($('save') as HTMLButtonElement).disabled = !dirty;
   ($('undo') as HTMLButtonElement).disabled = !canUndo;
@@ -255,6 +265,7 @@ function drawProblems(): void {
   if (!items.length) { box.classList.remove('has'); const p = document.createElement('div'); p.className = 'ok'; p.textContent = 'No problems found.'; box.append(p); return; }
   const ul = document.createElement('ul');
   for (const text of items) { const li = document.createElement('li'); li.textContent = text; ul.append(li); }
+  if (lastError && (setup || lastFix || lastCommand)) ul.firstElementChild!.append(drawFix());
   box.classList.toggle('has', items.length > 0);
   box.append(ul);
   // A wire to something that is not there cannot be drawn, so it cannot be clicked: offer to clear them.
@@ -263,6 +274,33 @@ function drawProblems(): void {
     b.textContent = 'Remove broken wires'; b.onclick = () => edit('pruneWires');
     box.append(b);
   }
+}
+
+/** Under an error that something is missing: the button that fixes it, the fix's progress, or the command to run. */
+function drawFix(): HTMLElement {
+  const el = (tag: string, cls: string, text = '') => { const e = document.createElement(tag); e.className = cls; e.textContent = text; return e; };
+  if (setup) {
+    const box = el('div', 'setup');
+    const bar = document.createElement('progress');
+    if (setup.fraction !== undefined) { bar.max = 1; bar.value = setup.fraction; }
+    const cancel = el('button', 'cancel', 'Cancel') as HTMLButtonElement;
+    cancel.onclick = () => link.send({ t: 'cancelFix' });
+    box.append(el('span', 'what', setup.text), bar, cancel);
+    return box;
+  }
+  const box = el('div', 'fix');
+  if (lastFix) {
+    const go = el('button', 'do primary', lastFix) as HTMLButtonElement;
+    go.onclick = () => { setup = { text: 'Starting' }; drawBar(); drawProblems(); link.send({ t: 'fix' }); };
+    box.append(go);
+  }
+  if (lastCommand) {
+    const command = lastCommand;
+    const copy = el('button', 'copy', 'Copy') as HTMLButtonElement;
+    copy.onclick = () => { void navigator.clipboard?.writeText(command).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 1500); }, () => {}); };
+    box.append(el('code', '', command), copy);
+  }
+  return box;
 }
 
 // ---------- catalog ----------

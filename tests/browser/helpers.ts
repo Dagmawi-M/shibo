@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { startServer, type Server } from '../../server/standalone.ts';
 import { launch, type Browser, type Page } from './cdp.ts';
+import type { Toolchain } from '../../engine/src/toolchain.ts';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 export const fixture = (name: string) => fs.readFileSync(path.join(root, 'engine', 'test', 'fixtures', name), 'utf8');
@@ -40,12 +41,13 @@ export async function closeBrowser(): Promise<void> { await shared?.close(); sha
  * null for an empty folder) and, optionally, a sketch. Waits until the page
  * has drawn the project.
  */
-export async function openEditor(project: object | null, opts: { sketch?: string; hex?: string; size?: { width: number; height: number } } = {}): Promise<Editor> {
+export async function openEditor(project: object | null, opts: { sketch?: string; hex?: string; size?: { width: number; height: number }; toolchain?: Toolchain } = {}): Promise<Editor> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shibo-browser-'));
   if (project) fs.writeFileSync(path.join(dir, 'shibo.json'), JSON.stringify(project, null, 2));
   if (opts.sketch !== undefined) fs.writeFileSync(path.join(dir, 'sketch.ino'), opts.sketch);
   const hex = opts.hex ?? toggleHex;
-  const server = await startServer({ dir, port: 0, build: async () => ({ ok: true, log: '', hex }) });
+  // With a toolchain the real build and its fixes are used; otherwise every build is the ready-made firmware.
+  const server = await startServer(opts.toolchain ? { dir, port: 0, toolchain: opts.toolchain } : { dir, port: 0, build: async () => ({ ok: true, log: '', hex }) });
   const url = `http://127.0.0.1:${server.port}/`;
   const page = await (await browser()).page(url, opts.size);
   // The page has the project once the folder name is in the top bar.

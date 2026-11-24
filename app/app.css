@@ -262,6 +262,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .problems li { padding: 6px 9px 6px 28px; border-radius: var(--r-sm); background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); white-space: pre-wrap; word-break: break-word; position: relative; animation: fade var(--mid) var(--ease) both; }
 .problems li::before { content: "!"; position: absolute; left: 8px; top: 7px; width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--warn-bg); font: 700 10px/14px var(--font); text-align: center; }
 .problems > button { margin-top: 8px; }
+/* Under an error that something is missing: the fix, its progress, or a command to run. */
+.problems .fix, .problems .setup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; white-space: normal; color: var(--ink); }
+.problems .fix button, .problems .setup button { white-space: normal; text-align: left; }
+.problems .fix button.do { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.problems .fix button.do:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.problems .fix code { flex: 1 1 100%; padding: 6px 8px; border-radius: var(--r-sm); background: var(--panel); border: 1px solid var(--line); font: 12px/1.4 var(--mono); user-select: all; overflow-wrap: anywhere; }
+.problems .setup .what { flex: 1 1 100%; }
+.problems .setup progress { flex: 1 1 120px; height: 6px; accent-color: var(--accent); }
 .problems .ok { color: var(--mute); padding: 4px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
 .problems .ok::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 

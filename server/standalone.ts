@@ -5,7 +5,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type InMsg, type OutMsg } from '../engine/src/session.ts';
-import { buildSketch } from '../engine/src/build.ts';
+import { buildSketch, type BuildResult } from '../engine/src/build.ts';
+import type { Toolchain } from '../engine/src/toolchain.ts';
 
 const HOST = '127.0.0.1';
 const TICK_MS = 16;
@@ -15,9 +16,13 @@ const CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inl
 
 export interface Server { host: string; port: number; running(): boolean; close(): Promise<void> }
 
-export function startServer(opts: { dir: string; port: number; build?: (dir: string) => Promise<{ ok: boolean; log: string; hex?: string }>; appDir?: string }): Promise<Server> {
+/**
+ * Serve the editor for one project folder. `toolchain` compiles sketches and
+ * carries out setup fixes; `build` replaces compiling altogether (tests, the gallery).
+ */
+export function startServer(opts: { dir: string; port: number; build?: (dir: string, board: string) => Promise<BuildResult>; toolchain?: Toolchain; appDir?: string }): Promise<Server> {
   const appDir = opts.appDir ?? path.resolve(import.meta.dirname, '..', 'dist', 'app');
-  const session = new Session({ build: opts.build ?? ((d, b) => buildSketch(d, b)), watch: true });
+  const session = new Session({ build: opts.build ?? (opts.toolchain ? undefined : (d, b) => buildSketch(d, b)), toolchain: opts.toolchain, watch: true });
   const clients = new Set<http.ServerResponse>();
   let state = 'idle';
   let timer: NodeJS.Timeout | null = null, last = 0;

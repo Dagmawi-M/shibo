@@ -1,31 +1,19 @@
 // The whole road from "nothing installed" to a running sketch, without the network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { Toolchain } from '../src/toolchain.ts';
 import { Session, type OutMsg } from '../src/session.ts';
 import { createProject } from '../src/templates.ts';
 import { SetupError } from '../src/setup.ts';
-import { makeRig, FAKE_CLI, type Rig } from './helpers/setup-rig.ts';
+import { makeRig, chain, theirs } from './helpers/setup-rig.ts';
 
 const skip = process.platform === 'win32';
 const COMPILER = 'Download the Arduino compiler (about 80 MB, one time)';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const until = async (ok: () => boolean, what: string) => { const t = Date.now(); while (!ok()) { if (Date.now() - t > 8000) throw new Error('timed out waiting for ' + what); await sleep(10); } };
 
-/** A toolchain that can only see what the test put there: nothing of this computer's. */
-const chain = (rig: Rig, more: { path?: string } = {}) => new Toolchain({
-  ownDir: rig.ownDir, cacheDir: path.join(rig.dir, 'cache'), setup: rig.setup,
-  where: { env: { PATH: more.path ?? '' }, home: path.join(rig.dir, 'no-home'), platform: 'linux' },
-});
-/** Someone's own compiler on the PATH, with its data in `data`. */
-const theirs = (rig: Rig) => {
-  const bin = path.join(rig.dir, 'their bin'); mkdirSync(bin, { recursive: true });
-  copyFileSync(FAKE_CLI, path.join(bin, 'arduino-cli')); chmodSync(path.join(bin, 'arduino-cli'), 0o755);
-  process.env.FAKE_DATA = path.join(rig.dir, 'their data');
-  return { bin, data: process.env.FAKE_DATA, installed: () => mkdirSync(path.join(rig.dir, 'their data', 'packages', 'arduino', 'hardware', 'avr', '1.8.8'), { recursive: true }) };
-};
 const session = async (tc: Toolchain, dir: string) => {
   const s = new Session({ toolchain: tc }); const out: OutMsg[] = [];
   s.onMessage((m) => out.push(m)); await s.handle({ t: 'open', dir });
@@ -48,7 +36,7 @@ test('with nothing installed a build asks for the compiler; after the fix the sa
     // A folder with no sketch still says so, compiler or not.
     mkdirSync(path.join(rig.dir, 'bare'));
     assert.match((await chain(rig).build(path.join(rig.dir, 'bare'), 'uno')).log, /no sketch yet/);
-  } finally { delete process.env.FAKE_DATA; await rig.close(); }
+  } finally { await rig.close(); }
 });
 
 test('a compiler without the board package is not started; the package is offered instead', { skip }, async () => {
@@ -64,7 +52,7 @@ test('a compiler without the board package is not started; the package is offere
     assert.deepEqual(rig.commands().slice(-2), ['core update-index', 'core install arduino:avr']);
     assert.equal((await tc.build(dir, 'uno')).ok, true);
     assert.equal(existsSync(rig.ownDir), false, 'their compiler was used; nothing was downloaded');
-  } finally { delete process.env.FAKE_DATA; await rig.close(); }
+  } finally { await rig.close(); }
 });
 
 test('a compiler that cannot say where its packages are is simply tried, as before', { skip }, async () => {
@@ -73,7 +61,7 @@ test('a compiler that cannot say where its packages are is simply tried, as befo
     const mine = theirs(rig), tc = chain(rig, { path: mine.bin });
     process.env.FAKE_MODE = 'no-config';
     assert.equal((await tc.build(createProject(rig.dir, 'blink', 'blink'), 'uno')).ok, true);
-  } finally { delete process.env.FAKE_DATA; await rig.close(); }
+  } finally { await rig.close(); }
 });
 
 test('the setup check tells the four states apart', { skip }, async () => {
@@ -94,7 +82,7 @@ test('the setup check tells the four states apart', { skip }, async () => {
     assert.deepEqual([st.compiler.origin, st.avr, st.ready], ['own', 'present', true]); assert.ok(st.compiler.ownBytes! > 0);
     const wrong = new Toolchain({ ownDir: path.join(rig.dir, 'none'), setting: () => path.join(rig.dir, 'not-here'), where: { env: { PATH: '' }, home: rig.dir, platform: 'linux' } });
     assert.equal((await wrong.status()).compiler.settingMissing, true);
-  } finally { delete process.env.FAKE_DATA; await rig.close(); }
+  } finally { await rig.close(); }
 });
 
 test('two presses of the button are one download, and the compiler cannot be removed while it is being set up', { skip }, async () => {
@@ -181,5 +169,5 @@ test('a missing library is installed at a press, and a Mac without Rosetta is gi
     assert.equal(e.command, 'softwareupdate --install-rosetta --agree-to-license'); assert.equal(e.fix, undefined); assert.match(e.message, /Rosetta/);
     b.clear(); await b.s.handle({ t: 'fix' }); assert.deepEqual(b.of('setup'), [], 'a command is for the person to run, not Shibo');
     b.s.dispose();
-  } finally { delete process.env.FAKE_DATA; await rig.close(); }
+  } finally { await rig.close(); }
 });
